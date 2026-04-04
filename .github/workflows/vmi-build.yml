@@ -194,14 +194,14 @@ jobs:
             -cpu host 2>&1 || echo "⚠ QEMU exited (expected)"
 
       - name: Upload kernel
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: vmi-test-kernel
           path: linux-6.6/arch/x86/boot/bzImage
           retention-days: 7
       
       - name: Upload VMI daemon
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sentinel-vmi-daemon
           path: sentinel-vmi

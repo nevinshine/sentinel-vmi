@@ -14,6 +14,10 @@
 #include <string.h>
 #include <time.h>
 
+#define SYSCALL_ENTRY_SIZE 8ULL
+#define SYSCALL_MAX_ENTRIES 512ULL
+#define SYSCALL_TABLE_SIZE (SYSCALL_ENTRY_SIZE * SYSCALL_MAX_ENTRIES)
+
 // ──────────────────────────────────────────────
 // Known legitimate sys_call_table writers
 // Some kernel operations legitimately modify the area
@@ -103,16 +107,23 @@ int npf_handler_init(struct vmi_session *s) {
 void npf_handler_process(struct vmi_session *s,
                          uint64_t gpa,
                          int write_access) {
-    if (!write_access) return;  // We only care about writes
+    if (!s || !write_access) return;  // We only care about writes
 
     printf("[NPF-Handler] ══════════════════════════════════════\n");
     printf("[NPF-Handler] #NPF TRAPPED — WRITE TO PROTECTED PAGE\n");
     printf("[NPF-Handler] ══════════════════════════════════════\n");
     printf("[NPF-Handler] Fault GPA: 0x%lx\n", gpa);
 
+    int syscall_target = 0;
+
     // Calculate which syscall entry was targeted
     if (s->syscall_table_gpa != 0) {
-        int entry_index = (int)((gpa - s->syscall_table_gpa) / 8);
+        if (gpa >= s->syscall_table_gpa &&
+            gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
+            syscall_target = 1;
+        }
+
+        int entry_index = (int)((gpa - s->syscall_table_gpa) / SYSCALL_ENTRY_SIZE);
         if (entry_index >= 0 && entry_index < 512) {
             printf("[NPF-Handler] Targeted syscall entry: %d\n",
                    entry_index);
@@ -135,9 +146,15 @@ void npf_handler_process(struct vmi_session *s,
 
     // Signal to the cross-layer bridge
     char reason[128];
-    snprintf(reason, sizeof(reason),
-             "syscall_table_write: GPA=0x%lx", gpa);
-    bridge_signal_malicious(malicious_pid, reason);
+    if (syscall_target) {
+        snprintf(reason, sizeof(reason),
+                 "syscall_table_write: GPA=0x%lx", gpa);
+        bridge_signal_malicious(malicious_pid, reason);
+    } else {
+        snprintf(reason, sizeof(reason),
+                 "protected_page_write: GPA=0x%lx", gpa);
+        bridge_signal_suspicious(malicious_pid, reason);
+    }
 
     printf("[NPF-Handler] ⚠ Response chain activated:\n");
     printf("[NPF-Handler]   → vmi_alert_map updated\n");

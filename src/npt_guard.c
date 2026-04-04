@@ -30,6 +30,7 @@
 // ──────────────────────────────────────────────
 
 #define KVM_MEM_READONLY    (1UL << 1)
+#define MAX_GUARD_REGIONS   8
 
 // Known sys_call_table symbols (kernel version dependent)
 // These are the GVA of sys_call_table in common kernel builds.
@@ -77,6 +78,48 @@ static int resolve_syscall_table(struct vmi_session *s) {
 
 static uint64_t clean_syscall_table[512];
 static int snapshot_taken = 0;
+static uint64_t clean_syscall_hash = 0;
+
+struct guard_region {
+    const char *name;
+    uint64_t gpa;
+    uint64_t size;
+};
+
+static struct guard_region guard_regions[MAX_GUARD_REGIONS];
+static int guard_region_count = 0;
+
+static uint64_t fnv1a64(const void *data, size_t len) {
+    const unsigned char *p = (const unsigned char *)data;
+    uint64_t h = 1469598103934665603ULL;
+
+    for (size_t i = 0; i < len; i++) {
+        h ^= (uint64_t)p[i];
+        h *= 1099511628211ULL;
+    }
+
+    return h;
+}
+
+static void clear_guard_regions(void) {
+    memset(guard_regions, 0, sizeof(guard_regions));
+    guard_region_count = 0;
+}
+
+static int add_guard_region(const char *name, uint64_t gpa, uint64_t size) {
+    if (!name || size == 0)
+        return -1;
+
+    if (guard_region_count >= MAX_GUARD_REGIONS)
+        return -1;
+
+    guard_regions[guard_region_count].name = name;
+    guard_regions[guard_region_count].gpa = gpa;
+    guard_regions[guard_region_count].size = size;
+    guard_region_count++;
+
+    return 0;
+}
 
 static int snapshot_syscall_table(struct vmi_session *s) {
     if (vmi_read_physical(s, s->syscall_table_gpa,
@@ -88,8 +131,10 @@ static int snapshot_syscall_table(struct vmi_session *s) {
     }
 
     snapshot_taken = 1;
+    clean_syscall_hash = fnv1a64(clean_syscall_table, sizeof(clean_syscall_table));
     printf("[NPT-Guard] Snapshot of clean sys_call_table taken "
            "(%d entries)\n", 512);
+    printf("[NPT-Guard] Baseline hash: 0x%lx\n", clean_syscall_hash);
 
     // Print first few entries for verification
     for (int i = 0; i < 5; i++) {
@@ -125,6 +170,7 @@ static int set_page_readonly(struct vmi_session *s, uint64_t gpa) {
     };
 
     // Find the memslot containing this GPA
+    int found_slot = 0;
     for (int i = 0; i < s->nr_memslots; i++) {
         struct vmi_memslot *slot = &s->memslots[i];
         if (gpa >= slot->guest_phys_addr &&
@@ -133,8 +179,16 @@ static int set_page_readonly(struct vmi_session *s, uint64_t gpa) {
             region.slot = slot->slot;
             region.userspace_addr =
                 (uint64_t)slot->userspace_addr + offset;
+            found_slot = 1;
             break;
         }
+    }
+
+    if (!found_slot) {
+        fprintf(stderr,
+                "[NPT-Guard] WARN: no memslot found for GPA 0x%lx\n",
+                gpa);
+        return -1;
     }
 
     if (s->vm_fd >= 0) {
@@ -144,6 +198,26 @@ static int set_page_readonly(struct vmi_session *s, uint64_t gpa) {
             printf("[NPT-Guard] NOTE: Full NPT manipulation requires "
                    "kvmi-v7 patched kernel\n");
             // Don't return error — we still want to monitor
+        }
+    }
+
+    return 0;
+}
+
+static int arm_guard_regions(struct vmi_session *s) {
+    for (int i = 0; i < guard_region_count; i++) {
+        uint64_t start = guard_regions[i].gpa;
+        uint64_t end = start + guard_regions[i].size;
+        uint64_t page = start & ~(uint64_t)(VMI_PAGE_SIZE - 1);
+
+        printf("[NPT-Guard] Arming region '%s' gpa=0x%lx size=0x%lx\n",
+               guard_regions[i].name,
+               guard_regions[i].gpa,
+               guard_regions[i].size);
+
+        while (page < end) {
+            set_page_readonly(s, page);
+            page += VMI_PAGE_SIZE;
         }
     }
 
@@ -161,6 +235,8 @@ int npt_guard_arm(struct vmi_session *s) {
     printf("[NPT-Guard] Arming sys_call_table Protection\n");
     printf("[NPT-Guard] ═══════════════════════════════════════\n");
 
+    clear_guard_regions();
+
     // Step 1: Resolve sys_call_table GPA
     if (resolve_syscall_table(s) < 0) {
         printf("[NPT-Guard] Could not resolve sys_call_table — "
@@ -173,17 +249,14 @@ int npt_guard_arm(struct vmi_session *s) {
         return -1;
     }
 
-    // Step 3: Mark the page read-only in NPT
-    set_page_readonly(s, s->syscall_table_gpa);
-
-    // The sys_call_table may span multiple pages
-    uint64_t end_gpa = s->syscall_table_gpa + SYS_CALL_TABLE_SIZE;
-    uint64_t next_page = (s->syscall_table_gpa + VMI_PAGE_SIZE) &
-                         ~(uint64_t)(VMI_PAGE_SIZE - 1);
-    while (next_page < end_gpa) {
-        set_page_readonly(s, next_page);
-        next_page += VMI_PAGE_SIZE;
+    // Step 3: Register and arm protected regions
+    if (add_guard_region("sys_call_table",
+                         s->syscall_table_gpa,
+                         SYS_CALL_TABLE_SIZE) < 0) {
+        return -1;
     }
+
+    arm_guard_regions(s);
 
     s->npt_armed = 1;
     printf("[NPT-Guard] ✓ sys_call_table is now hardware-protected\n");
@@ -204,6 +277,8 @@ void npt_guard_disarm(struct vmi_session *s) {
     // Restore write access — in production, mark page RW again
     // via KVM_SET_USER_MEMORY_REGION without KVM_MEM_READONLY
 
+    clear_guard_regions();
+    snapshot_taken = 0;
     s->npt_armed = 0;
     printf("[NPT-Guard] Protection disarmed\n");
 }
@@ -229,6 +304,15 @@ void npt_guard_handle_events(struct vmi_session *s) {
         uint64_t current_table[512];
         if (vmi_read_physical(s, s->syscall_table_gpa,
                               current_table, SYS_CALL_TABLE_SIZE) == 0) {
+            uint64_t current_hash = fnv1a64(current_table, sizeof(current_table));
+            if (current_hash == clean_syscall_hash) {
+                usleep(100000);
+                return;
+            }
+
+            printf("[NPT-Guard] Hash mismatch detected: baseline=0x%lx current=0x%lx\n",
+                   clean_syscall_hash, current_hash);
+
             for (int i = 0; i < 512; i++) {
                 if (current_table[i] != clean_syscall_table[i]) {
                     printf("[NPT-Guard] ⚠ ROOTKIT DETECTED: "

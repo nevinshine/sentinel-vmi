@@ -87,6 +87,7 @@ struct vmi_process {
     uint64_t task_addr;         // GVA of task_struct
     uint32_t pid;
     uint32_t tgid;
+    uint32_t ppid;
     uint32_t uid;
     uint32_t gid;
     char     comm[TASK_COMM_LEN];
@@ -102,6 +103,8 @@ int  task_walker_read_process(struct vmi_session *s,
                               uint64_t task_gva,
                               struct vmi_process *out);
 int  task_walker_detect_privilege_escalation(struct vmi_session *s);
+int  task_walker_set_offsets_profile(const char *kernel_version);
+const char *task_walker_get_offsets_profile(void);
 
 // ──────────────────────────────────────────────
 // Phase 3 — npt_guard.c / npf_handler.c

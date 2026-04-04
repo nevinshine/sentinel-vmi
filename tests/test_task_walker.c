@@ -26,6 +26,7 @@ static void test_offset_table_6_6(void) {
     if (OFFSETS_6_6.tasks_offset > 0 &&
         OFFSETS_6_6.pid_offset > 0 &&
         OFFSETS_6_6.comm_offset > 0 &&
+        OFFSETS_6_6.real_parent_offset > 0 &&
         OFFSETS_6_6.tasks_offset < 0x1000 &&
         OFFSETS_6_6.pid_offset < 0x1000) {
         PASS();
@@ -39,10 +40,48 @@ static void test_offset_table_6_1(void) {
 
     if (OFFSETS_6_1.tasks_offset > 0 &&
         OFFSETS_6_1.pid_offset > 0 &&
+        OFFSETS_6_1.real_parent_offset > 0 &&
         OFFSETS_6_1.tasks_offset < 0x1000) {
         PASS();
     } else {
         FAIL("offsets out of range");
+    }
+}
+
+// ──────────────────────────────────────────────
+// Test: Runtime offset profile selection
+// ──────────────────────────────────────────────
+
+static void test_profile_select_6_1(void) {
+    TEST("offset_profile_select_6_1");
+
+    int rc = task_walker_set_offsets_profile("6.1.92");
+    if (rc == 0 && strcmp(task_walker_get_offsets_profile(), "6.1") == 0) {
+        PASS();
+    } else {
+        FAIL("failed to select 6.1 profile");
+    }
+}
+
+static void test_profile_select_6_6(void) {
+    TEST("offset_profile_select_6_6");
+
+    int rc = task_walker_set_offsets_profile("6.6.28");
+    if (rc == 0 && strcmp(task_walker_get_offsets_profile(), "6.6") == 0) {
+        PASS();
+    } else {
+        FAIL("failed to select 6.6 profile");
+    }
+}
+
+static void test_profile_select_unknown(void) {
+    TEST("offset_profile_select_unknown");
+
+    int rc = task_walker_set_offsets_profile("5.15.0");
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("unknown profile should fail");
     }
 }
 
@@ -101,6 +140,9 @@ int main(void) {
 
     test_offset_table_6_6();
     test_offset_table_6_1();
+    test_profile_select_6_1();
+    test_profile_select_6_6();
+    test_profile_select_unknown();
     test_dump_no_init_task();
     test_find_pid_null();
     test_vmi_process_size();

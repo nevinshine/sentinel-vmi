@@ -10,9 +10,51 @@
 #include "sentinel_vmi.h"
 #include "task_offsets.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 const struct task_offsets *active_offsets = &OFFSETS_6_6;
+static int offsets_initialized = 0;
+
+static const struct task_offsets *select_offsets_profile(const char *kernel_version) {
+    if (!kernel_version || !*kernel_version)
+        return NULL;
+
+    if (strstr(kernel_version, "6.6"))
+        return &OFFSETS_6_6;
+
+    if (strstr(kernel_version, "6.1"))
+        return &OFFSETS_6_1;
+
+    return NULL;
+}
+
+int task_walker_set_offsets_profile(const char *kernel_version) {
+    const struct task_offsets *profile = select_offsets_profile(kernel_version);
+    if (!profile)
+        return -1;
+
+    active_offsets = profile;
+    offsets_initialized = 1;
+    printf("[TaskWalker] Using offset profile for kernel %s\n",
+           active_offsets->kernel_version);
+    return 0;
+}
+
+const char *task_walker_get_offsets_profile(void) {
+    return active_offsets ? active_offsets->kernel_version : "unknown";
+}
+
+static void ensure_offsets_profile_selected(void) {
+    if (offsets_initialized)
+        return;
+
+    const char *env_profile = getenv("VMI_GUEST_KERNEL_VERSION");
+    if (env_profile && task_walker_set_offsets_profile(env_profile) == 0)
+        return;
+
+    offsets_initialized = 1;
+}
 
 // ──────────────────────────────────────────────
 // Internal: Read a single task_struct field
@@ -57,6 +99,8 @@ int task_walker_read_process(struct vmi_session *s,
                              struct vmi_process *out) {
     if (!s || !out) return -1;
 
+    ensure_offsets_profile_selected();
+
     memset(out, 0, sizeof(*out));
     out->task_addr = task_gva;
 
@@ -69,6 +113,18 @@ int task_walker_read_process(struct vmi_session *s,
     if (read_task_field(s, task_gva, active_offsets->tgid_offset,
                         &out->tgid, sizeof(out->tgid)) < 0)
         return -1;
+
+    // PPID from real_parent->pid
+    if (active_offsets->real_parent_offset != 0) {
+        uint64_t parent_task = 0;
+        if (read_task_field(s, task_gva, active_offsets->real_parent_offset,
+                            &parent_task, sizeof(parent_task)) == 0 &&
+            parent_task != 0) {
+            vmi_read_virtual(s, s->kernel_pgd,
+                             parent_task + active_offsets->pid_offset,
+                             &out->ppid, sizeof(out->ppid));
+        }
+    }
 
     // comm (process name)
     if (read_task_field(s, task_gva, active_offsets->comm_offset,
@@ -105,6 +161,8 @@ int task_walker_read_process(struct vmi_session *s,
 // ──────────────────────────────────────────────
 
 void task_walker_dump(struct vmi_session *s) {
+    ensure_offsets_profile_selected();
+
     if (!s || s->init_task_addr == 0) {
         printf("[TaskWalker] init_task address not set — "
                "cannot walk process list\n");
@@ -116,8 +174,8 @@ void task_walker_dump(struct vmi_session *s) {
     printf("[TaskWalker] ═══════════════════════════════════════\n");
     printf("[TaskWalker] Guest Process List (from Ring -1)\n");
     printf("[TaskWalker] ═══════════════════════════════════════\n");
-    printf("[TaskWalker] %-6s %-6s %-16s %-5s %-5s %-18s\n",
-           "PID", "TGID", "COMM", "UID", "GID", "TASK_ADDR");
+        printf("[TaskWalker] %-6s %-6s %-6s %-16s %-5s %-5s %-18s\n",
+            "PID", "TGID", "PPID", "COMM", "UID", "GID", "TASK_ADDR");
     printf("[TaskWalker] ─────────────────────────────────"
            "──────────────────────\n");
 
@@ -133,8 +191,8 @@ void task_walker_dump(struct vmi_session *s) {
             break;
         }
 
-        printf("[TaskWalker] %-6u %-6u %-16s %-5u %-5u 0x%lx\n",
-               proc.pid, proc.tgid, proc.comm,
+         printf("[TaskWalker] %-6u %-6u %-6u %-16s %-5u %-5u 0x%lx\n",
+             proc.pid, proc.tgid, proc.ppid, proc.comm,
                proc.uid, proc.gid, proc.task_addr);
 
         // Walk to next
@@ -165,6 +223,8 @@ int task_walker_find_pid(struct vmi_session *s,
                          uint32_t pid,
                          uint64_t *task_addr) {
     if (!s || !task_addr || s->init_task_addr == 0) return -1;
+
+    ensure_offsets_profile_selected();
 
     uint64_t current = s->init_task_addr;
     int count = 0;
@@ -199,6 +259,8 @@ int task_walker_find_pid(struct vmi_session *s,
 
 int task_walker_detect_privilege_escalation(struct vmi_session *s) {
     if (!s || s->init_task_addr == 0) return -1;
+
+    ensure_offsets_profile_selected();
 
     uint64_t current = s->init_task_addr;
     int detections = 0;

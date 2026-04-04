@@ -22,6 +22,9 @@ struct task_offsets {
     // task_struct → tgid
     uint64_t tgid_offset;
 
+    // task_struct → real_parent (struct task_struct *)
+    uint64_t real_parent_offset;
+
     // task_struct → comm[TASK_COMM_LEN]
     uint64_t comm_offset;
 
@@ -50,6 +53,7 @@ static const struct task_offsets OFFSETS_6_6 = {
     .tasks_offset     = 0x298,   // offsetof(task_struct, tasks)
     .pid_offset       = 0x398,   // offsetof(task_struct, pid)
     .tgid_offset      = 0x39c,   // offsetof(task_struct, tgid)
+    .real_parent_offset = 0x2b0, // offsetof(task_struct, real_parent)
     .comm_offset      = 0x558,   // offsetof(task_struct, comm)
     .mm_offset        = 0x268,   // offsetof(task_struct, mm)
     .cred_offset      = 0x538,   // offsetof(task_struct, cred)
@@ -66,6 +70,7 @@ static const struct task_offsets OFFSETS_6_1 = {
     .tasks_offset     = 0x290,
     .pid_offset       = 0x390,
     .tgid_offset      = 0x394,
+    .real_parent_offset = 0x2a8,
     .comm_offset      = 0x550,
     .mm_offset        = 0x260,
     .cred_offset      = 0x530,

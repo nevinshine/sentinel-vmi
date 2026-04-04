@@ -32,6 +32,17 @@ static void test_arm_no_pgd(void) {
     }
 }
 
+static void test_arm_null_session(void) {
+    TEST("npt_arm_null_session");
+
+    int rc = npt_guard_arm(NULL);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL session");
+    }
+}
+
 static void test_disarm_unarmed(void) {
     TEST("npt_disarm_unarmed_safe");
 
@@ -68,6 +79,17 @@ static void test_npf_write_handled(void) {
     PASS();
 }
 
+static void test_npf_write_outside_syscall(void) {
+    TEST("npf_write_outside_syscall");
+
+    struct vmi_session s = {0};
+    s.syscall_table_gpa = 0x4000;
+
+    // Write outside syscall table should still be handled safely
+    npf_handler_process(&s, 0x1000, 1);
+    PASS();
+}
+
 // ──────────────────────────────────────────────
 // Test: NPF handler init
 // ──────────────────────────────────────────────
@@ -90,9 +112,11 @@ int main(void) {
     printf("[Test] ═══════════════════════════════════════\n\n");
 
     test_arm_no_pgd();
+    test_arm_null_session();
     test_disarm_unarmed();
     test_npf_read_ignored();
     test_npf_write_handled();
+    test_npf_write_outside_syscall();
     test_npf_init();
 
     printf("\n[Test] ───────────────────────────────────────\n");

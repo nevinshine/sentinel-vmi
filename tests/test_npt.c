@@ -106,6 +106,39 @@ static void test_npf_init(void) {
     }
 }
 
+static void test_integrity_violation_null_guard(void) {
+    TEST("integrity_violation_null_guard");
+
+    int rc = npf_handler_report_integrity_violation(NULL,
+                                                    "kernel_text",
+                                                    0x1000,
+                                                    0x1,
+                                                    0x2,
+                                                    1);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL session");
+    }
+}
+
+static void test_integrity_violation_report(void) {
+    TEST("integrity_violation_report");
+
+    struct vmi_session s = {0};
+    int rc = npf_handler_report_integrity_violation(&s,
+                                                    "idt",
+                                                    0x2000,
+                                                    0xaaa,
+                                                    0xbbb,
+                                                    1);
+    if (rc == 0) {
+        PASS();
+    } else {
+        FAIL("integrity report should return 0");
+    }
+}
+
 int main(void) {
     printf("\n[Test] ═══════════════════════════════════════\n");
     printf("[Test] Phase 3: NPT Guard Tests\n");
@@ -118,6 +151,8 @@ int main(void) {
     test_npf_write_handled();
     test_npf_write_outside_syscall();
     test_npf_init();
+    test_integrity_violation_null_guard();
+    test_integrity_violation_report();
 
     printf("\n[Test] ───────────────────────────────────────\n");
     printf("[Test] Results: %d passed, %d failed\n",

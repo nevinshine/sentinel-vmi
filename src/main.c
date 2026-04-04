@@ -65,6 +65,9 @@ int main(int argc, char *argv[]) {
     printf("\n[VMI] ── Phase 2: Process List Walk ──\n");
     task_walker_dump(session);
     task_walker_detect_privilege_escalation(session);
+    task_walker_detect_orphans(session);
+    task_walker_detect_fork_bomb(session, 256);
+    task_walker_detect_suspicious_ancestry(session);
 
     // ────────────────────────────────────────
     // Phase 3: Arm NPT Guard
@@ -108,6 +111,9 @@ int main(int argc, char *argv[]) {
 
         // Periodic privilege escalation scan
         task_walker_detect_privilege_escalation(session);
+        task_walker_detect_orphans(session);
+        task_walker_detect_fork_bomb(session, 256);
+        task_walker_detect_suspicious_ancestry(session);
 
         // Flush queued alerts
         bridge_flush_alerts();

@@ -90,9 +90,16 @@ struct vmi_process {
     uint32_t ppid;
     uint32_t uid;
     uint32_t gid;
+    uint32_t euid;
+    uint32_t egid;
     char     comm[TASK_COMM_LEN];
     uint64_t mm_addr;           // mm_struct pointer
     uint64_t cred_addr;         // cred struct pointer
+    uint64_t files_addr;        // files_struct pointer
+    uint64_t nsproxy_addr;      // nsproxy pointer
+    uint64_t start_time;        // task start time
+    uint64_t flags;             // task flags
+    uint64_t cap_effective;     // effective capabilities (low 64 bits)
 };
 
 void task_walker_dump(struct vmi_session *s);
@@ -105,6 +112,10 @@ int  task_walker_read_process(struct vmi_session *s,
 int  task_walker_detect_privilege_escalation(struct vmi_session *s);
 int  task_walker_set_offsets_profile(const char *kernel_version);
 const char *task_walker_get_offsets_profile(void);
+int  task_walker_detect_orphans(struct vmi_session *s);
+int  task_walker_detect_fork_bomb(struct vmi_session *s,
+                                  uint32_t threshold);
+int  task_walker_detect_suspicious_ancestry(struct vmi_session *s);
 
 // ──────────────────────────────────────────────
 // Phase 3 — npt_guard.c / npf_handler.c
@@ -117,6 +128,12 @@ int  npf_handler_init(struct vmi_session *s);
 void npf_handler_process(struct vmi_session *s,
                          uint64_t gpa,
                          int write_access);
+int  npf_handler_report_integrity_violation(struct vmi_session *s,
+                                            const char *region_name,
+                                            uint64_t gpa,
+                                            uint64_t expected_hash,
+                                            uint64_t actual_hash,
+                                            int critical);
 
 // ──────────────────────────────────────────────
 // Phase 4 — bridge.c

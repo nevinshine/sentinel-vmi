@@ -29,8 +29,8 @@ wire-speed packet drops.
 | Phase | Goal | Status |
 |-------|------|--------|
 | 1 | Raw guest memory introspection | Implemented baseline (QMP handshake + live memslot discovery) |
-| 2 | task_struct parsing and process list | Rebuilding |
-| 3 | NPT Guard — sys_call_table protection | Rebuilding |
+| 2 | task_struct parsing and process intelligence | Implemented with BTF-first fallback and anomaly detectors |
+| 3 | NPT Guard and kernel integrity enforcement | Hardened baseline implemented (multi-region integrity + revalidation) |
 | 4 | Cross-layer bridge to Hyperion/Telos | Rebuilding |
 | 5 | Advanced introspection (network/fs/module/hypervisor hardening) | Planned |
 | 6 | Telos Ring -1 integration and formal verification | Future |
@@ -70,3 +70,17 @@ make
 Writes malicious PIDs to `vmi_alert_map` (pinned BPF map).
 Hyperion XDP reads this map for wire-speed XDP_DROP.
 Telos Runtime reads this map for taint elevation.
+
+## Phase 3 Optional Guard Regions
+
+Phase 3 now supports optional integrity monitoring regions in addition to sys_call_table.
+Set guest virtual addresses as environment variables before launch; each region is translated and guarded at runtime.
+
+- VMI_IDT_GVA with optional VMI_IDT_SIZE
+- VMI_GDT_GVA with optional VMI_GDT_SIZE
+- VMI_LSTAR_GVA with optional VMI_LSTAR_SIZE
+- VMI_KERNEL_TEXT_GVA with optional VMI_KERNEL_TEXT_SIZE
+
+Optional testing override:
+
+- VMI_ALLOW_LEGIT_KERNEL_PATCH=1 allows sys_call_table and kernel_text writes to be treated as legitimate in staging tests only.

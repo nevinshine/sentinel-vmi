@@ -50,10 +50,11 @@ Key technical challenge:
 Goal: Parse meaningful kernel data structures from raw bytes.
 
 Components:
-- task_struct offset database (kernel version aware)
+- BTF-first offset loader with kernel-profile fallback
 - Process list walker (init_task → all processes)
-- PID, TGID, comm, mm_struct extraction
-- Credential structure (cred) parsing for privilege detection
+- Expanded extraction: PID/TGID/PPID, comm, mm, files, namespaces, start time, flags
+- Credential parsing (uid/gid/euid/egid/capabilities)
+- Behavioral analytics: privilege transitions, orphan tasks, fork-bomb patterns, suspicious ancestry
 
 Key technical challenge:
 - task_struct layout changes between kernel versions
@@ -70,6 +71,8 @@ Components:
 - NPT entry modification: mark page read-only at hypervisor level
 - #NPF (Nested Page Fault) trap handler
 - Fault analysis: is this a legitimate kernel write or rootkit?
+- Multi-region integrity baseline and periodic hash revalidation
+- Optional IDT/GDT/LSTAR/kernel_text guard regions via runtime configuration
 
 Key technical challenge:
 - NPT operates on physical addresses not virtual
@@ -178,8 +181,8 @@ sentinel-vmi/
 
 ## Current Status
 Phase 1: Baseline implemented and test-validated.
-Phase 2: Rebuilding and expanding toward BTF-first semantic extraction.
-Phase 3: Rebuilding and expanding toward full NPT policy/signature coverage.
+Phase 2: Implemented with BTF-first semantic extraction fallback and anomaly analytics.
+Phase 3: Hardened baseline implemented with multi-region integrity guard and anomaly classification.
 Phase 4: Rebuilding and expanding cross-layer response orchestration.
 Phase 5: Planned after Phase 4 completion.
 Phase 6: Future language/runtime integration milestone.

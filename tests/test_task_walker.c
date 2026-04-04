@@ -27,6 +27,12 @@ static void test_offset_table_6_6(void) {
         OFFSETS_6_6.pid_offset > 0 &&
         OFFSETS_6_6.comm_offset > 0 &&
         OFFSETS_6_6.real_parent_offset > 0 &&
+        OFFSETS_6_6.files_offset > 0 &&
+        OFFSETS_6_6.nsproxy_offset > 0 &&
+        OFFSETS_6_6.start_time_offset > 0 &&
+        OFFSETS_6_6.flags_offset > 0 &&
+        OFFSETS_6_6.cred_egid_offset > 0 &&
+        OFFSETS_6_6.cred_cap_effective_offset > 0 &&
         OFFSETS_6_6.tasks_offset < 0x1000 &&
         OFFSETS_6_6.pid_offset < 0x1000) {
         PASS();
@@ -41,6 +47,12 @@ static void test_offset_table_6_1(void) {
     if (OFFSETS_6_1.tasks_offset > 0 &&
         OFFSETS_6_1.pid_offset > 0 &&
         OFFSETS_6_1.real_parent_offset > 0 &&
+        OFFSETS_6_1.files_offset > 0 &&
+        OFFSETS_6_1.nsproxy_offset > 0 &&
+        OFFSETS_6_1.start_time_offset > 0 &&
+        OFFSETS_6_1.flags_offset > 0 &&
+        OFFSETS_6_1.cred_egid_offset > 0 &&
+        OFFSETS_6_1.cred_cap_effective_offset > 0 &&
         OFFSETS_6_1.tasks_offset < 0x1000) {
         PASS();
     } else {
@@ -116,6 +128,50 @@ static void test_find_pid_null(void) {
     }
 }
 
+static void test_detect_privilege_null(void) {
+    TEST("detect_privilege_null_guard");
+
+    int rc = task_walker_detect_privilege_escalation(NULL);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL");
+    }
+}
+
+static void test_detect_orphans_null(void) {
+    TEST("detect_orphans_null_guard");
+
+    int rc = task_walker_detect_orphans(NULL);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL");
+    }
+}
+
+static void test_detect_fork_bomb_null(void) {
+    TEST("detect_fork_bomb_null_guard");
+
+    int rc = task_walker_detect_fork_bomb(NULL, 128);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL");
+    }
+}
+
+static void test_detect_suspicious_ancestry_null(void) {
+    TEST("detect_suspicious_ancestry_null_guard");
+
+    int rc = task_walker_detect_suspicious_ancestry(NULL);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL");
+    }
+}
+
 // ──────────────────────────────────────────────
 // Test: Process struct zero-init
 // ──────────────────────────────────────────────
@@ -126,7 +182,15 @@ static void test_vmi_process_size(void) {
     struct vmi_process proc;
     memset(&proc, 0, sizeof(proc));
 
-    if (sizeof(proc) > 0 && proc.pid == 0 && proc.uid == 0) {
+    if (sizeof(proc) > 0 &&
+        proc.pid == 0 &&
+        proc.uid == 0 &&
+        proc.euid == 0 &&
+        proc.cap_effective == 0 &&
+        proc.files_addr == 0 &&
+        proc.nsproxy_addr == 0 &&
+        proc.start_time == 0 &&
+        proc.flags == 0) {
         PASS();
     } else {
         FAIL("struct layout broken");
@@ -145,6 +209,10 @@ int main(void) {
     test_profile_select_unknown();
     test_dump_no_init_task();
     test_find_pid_null();
+    test_detect_privilege_null();
+    test_detect_orphans_null();
+    test_detect_fork_bomb_null();
+    test_detect_suspicious_ancestry_null();
     test_vmi_process_size();
 
     printf("\n[Test] ───────────────────────────────────────\n");

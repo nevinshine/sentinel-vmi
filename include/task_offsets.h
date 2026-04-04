@@ -31,6 +31,18 @@ struct task_offsets {
     // task_struct → mm (struct mm_struct *)
     uint64_t mm_offset;
 
+    // task_struct → files (struct files_struct *)
+    uint64_t files_offset;
+
+    // task_struct → nsproxy (struct nsproxy *)
+    uint64_t nsproxy_offset;
+
+    // task_struct → start_time
+    uint64_t start_time_offset;
+
+    // task_struct → flags
+    uint64_t flags_offset;
+
     // task_struct → cred (const struct cred *)
     uint64_t cred_offset;
 
@@ -42,6 +54,12 @@ struct task_offsets {
 
     // cred → euid
     uint64_t cred_euid_offset;
+
+    // cred → egid
+    uint64_t cred_egid_offset;
+
+    // cred → cap_effective (lower 64 bits of kernel_cap_t)
+    uint64_t cred_cap_effective_offset;
 };
 
 // ──────────────────────────────────────────────
@@ -56,10 +74,16 @@ static const struct task_offsets OFFSETS_6_6 = {
     .real_parent_offset = 0x2b0, // offsetof(task_struct, real_parent)
     .comm_offset      = 0x558,   // offsetof(task_struct, comm)
     .mm_offset        = 0x268,   // offsetof(task_struct, mm)
+    .files_offset     = 0x2a0,   // offsetof(task_struct, files)
+    .nsproxy_offset   = 0x540,   // offsetof(task_struct, nsproxy)
+    .start_time_offset = 0x4f0,  // offsetof(task_struct, start_time)
+    .flags_offset     = 0x070,   // offsetof(task_struct, flags)
     .cred_offset      = 0x538,   // offsetof(task_struct, cred)
     .cred_uid_offset  = 0x04,    // offsetof(struct cred, uid)
     .cred_gid_offset  = 0x08,    // offsetof(struct cred, gid)
     .cred_euid_offset = 0x14,    // offsetof(struct cred, euid)
+    .cred_egid_offset = 0x18,    // offsetof(struct cred, egid)
+    .cred_cap_effective_offset = 0x28, // offsetof(struct cred, cap_effective)
 };
 
 // ──────────────────────────────────────────────
@@ -73,10 +97,16 @@ static const struct task_offsets OFFSETS_6_1 = {
     .real_parent_offset = 0x2a8,
     .comm_offset      = 0x550,
     .mm_offset        = 0x260,
+    .files_offset     = 0x298,
+    .nsproxy_offset   = 0x530,
+    .start_time_offset = 0x4e8,
+    .flags_offset     = 0x070,
     .cred_offset      = 0x530,
     .cred_uid_offset  = 0x04,
     .cred_gid_offset  = 0x08,
     .cred_euid_offset = 0x14,
+    .cred_egid_offset = 0x18,
+    .cred_cap_effective_offset = 0x28,
 };
 
 // The active offset table — selected at runtime or compile time

@@ -133,6 +133,33 @@ static void test_read_virtual_null(void) {
     }
 }
 
+// ──────────────────────────────────────────────
+// Test: Heartbeat API guards
+// ──────────────────────────────────────────────
+
+static void test_heartbeat_null(void) {
+    TEST("heartbeat_null_guard");
+
+    int rc = kvmi_session_heartbeat(NULL);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL session");
+    }
+}
+
+static void test_heartbeat_no_runtime(void) {
+    TEST("heartbeat_no_runtime");
+
+    struct vmi_session s = {0};
+    int rc = kvmi_session_heartbeat(&s);
+    if (rc == 0) {
+        PASS();
+    } else {
+        FAIL("heartbeat without runtime should be a no-op success");
+    }
+}
+
 int main(void) {
     printf("\n[Test] ═══════════════════════════════════════\n");
     printf("[Test] Phase 1: Memory Introspection Tests\n");
@@ -145,6 +172,8 @@ int main(void) {
     test_write_physical_zero_size();
     test_gva_to_gpa_null();
     test_read_virtual_null();
+    test_heartbeat_null();
+    test_heartbeat_no_runtime();
 
     printf("\n[Test] ───────────────────────────────────────\n");
     printf("[Test] Results: %d passed, %d failed\n",

@@ -99,6 +99,10 @@ int main(int argc, char *argv[]) {
     printf("[VMI] ═══════════════════════════════════════\n\n");
 
     while (running) {
+        if (kvmi_session_heartbeat(session) < 0) {
+            fprintf(stderr, "[VMI] WARN: KVMI heartbeat failed\n");
+        }
+
         // Handle NPF events from NPT Guard
         npt_guard_handle_events(session);
 

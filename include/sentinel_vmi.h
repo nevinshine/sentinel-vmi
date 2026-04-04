@@ -36,6 +36,7 @@ struct vmi_session {
     // Runtime attachment metadata
     int      qemu_pid;                      // target QEMU PID (if discovered)
     int      control_fd;                    // QMP/KVMI control channel fd
+    void     *kvmi_runtime;                 // private KVMI runtime state
 
     // NPT Guard state
     uint64_t syscall_table_gpa;             // guest-physical addr of sys_call_table
@@ -53,6 +54,7 @@ struct vmi_session {
 // ──────────────────────────────────────────────
 struct vmi_session *kvmi_setup(const char *vm_name);
 void kvmi_teardown(struct vmi_session *session);
+int kvmi_session_heartbeat(struct vmi_session *session);
 
 // ──────────────────────────────────────────────
 // Phase 1 — memory.c

@@ -9,12 +9,14 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     strategy:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Check hardware virtualization
         run: |
@@ -192,14 +194,14 @@ jobs:
             -cpu host 2>&1 || echo "⚠ QEMU exited (expected)"
 
       - name: Upload kernel
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: vmi-test-kernel
           path: linux-6.6/arch/x86/boot/bzImage
           retention-days: 7
       
       - name: Upload VMI daemon
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sentinel-vmi-daemon
           path: sentinel-vmi

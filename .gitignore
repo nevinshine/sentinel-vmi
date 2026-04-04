@@ -1,0 +1,7 @@
+# Build artifacts
+/sentinel-vmi
+/src/*.o
+/test_memory
+/test_task_walker
+/test_npt
+/test_bridge

@@ -46,9 +46,14 @@ Remaining validation:
 - Expand inline-hook and DKOM semantics with guest-symbol-assisted attribution
 
 ### Week 4: Phase 4 orchestration
-- Finalize vmi_alert_map schema and producer behavior
-- Add resilient gRPC stream for downstream consumers
-- Implement threat-level orchestration policy
+Done:
+- Finalized producer-side alert schema constants and fallback path definitions
+- Implemented threat-level orchestration policy (dedup + suspicious burst escalation)
+- Added resilient downstream alert stream transport with reconnect backoff (TCP JSONL)
+
+Remaining validation/work:
+- Wire stream transport to gRPC endpoint compatibility layer
+- Validate cross-component policy effects with Hyperion/Telos integration tests
 
 ## Deliverable Matrix (Now vs Target)
 
@@ -72,8 +77,8 @@ Remaining validation:
 
 ### Cross-layer
 - Bridge and map signaling baseline: done
-- gRPC policy stream: pending
-- Full stack orchestration rules: pending
+- gRPC policy stream: in progress (resilient transport path implemented)
+- Full stack orchestration rules: in progress
 
 ## Short-Term Acceptance Criteria
 - Week 1 complete when libkvmi handshake, heartbeat/reconnect, and optional cache pass unit and integration tests.

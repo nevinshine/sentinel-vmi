@@ -12,12 +12,15 @@
 
 #include "sentinel_vmi.h"
 #include "vmi_alert_map.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 // ──────────────────────────────────────────────
@@ -25,10 +28,44 @@
 // ──────────────────────────────────────────────
 
 #define ALERT_QUEUE_SIZE 256
+#define PID_POLICY_TABLE_SIZE 1024
 
-static struct vmi_alert alert_queue[ALERT_QUEUE_SIZE];
+#define POLICY_ESCALATION_COUNT 3U
+#define POLICY_ESCALATION_WINDOW_NS (10ULL * 1000000000ULL)
+#define POLICY_DEDUP_WINDOW_NS      (1ULL * 1000000000ULL)
+
+#define STREAM_DEFAULT_HOST "127.0.0.1"
+#define STREAM_DEFAULT_PORT 8421U
+#define STREAM_RECONNECT_BASE_NS (1ULL * 1000000000ULL)
+#define STREAM_RECONNECT_MAX_NS  (30ULL * 1000000000ULL)
+
+struct queued_alert {
+    struct vmi_alert alert;
+    int sent_immediately;
+};
+
+struct pid_policy_state {
+    uint32_t pid;
+    uint32_t last_effective_threat;
+    uint32_t suspicious_burst;
+    uint64_t burst_window_start_ns;
+    uint64_t last_emit_ns;
+    int used;
+};
+
+static struct queued_alert alert_queue[ALERT_QUEUE_SIZE];
 static int alert_count = 0;
 static int bpf_map_fd = -1;
+static uint64_t total_alerts_processed = 0;
+
+static struct pid_policy_state policy_table[PID_POLICY_TABLE_SIZE];
+
+static int stream_enabled = 0;
+static int stream_fd = -1;
+static char stream_host[64];
+static uint16_t stream_port = STREAM_DEFAULT_PORT;
+static uint64_t stream_next_reconnect_ns = 0;
+static uint64_t stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
 
 // ──────────────────────────────────────────────
 // Internal: Open the pinned BPF map
@@ -73,8 +110,6 @@ static int write_alert_to_map(struct vmi_alert *alert) {
 // without BPF.
 // ──────────────────────────────────────────────
 
-#define VMI_ALERT_FALLBACK_PATH "/tmp/vmi_alerts.log"
-
 static int open_bpf_map(void) {
     printf("[Bridge] libbpf not available — using file-based "
            "fallback at %s\n", VMI_ALERT_FALLBACK_PATH);
@@ -103,6 +138,182 @@ static int write_alert_to_map(struct vmi_alert *alert) {
 }
 #endif
 
+static int env_enabled(const char *key, int default_value) {
+    const char *value = getenv(key);
+    if (!value || !*value)
+        return default_value;
+
+    if (strcmp(value, "1") == 0 ||
+        strcmp(value, "true") == 0 ||
+        strcmp(value, "yes") == 0)
+        return 1;
+
+    if (strcmp(value, "0") == 0 ||
+        strcmp(value, "false") == 0 ||
+        strcmp(value, "no") == 0)
+        return 0;
+
+    return default_value;
+}
+
+static void parse_stream_config(void) {
+    stream_enabled = env_enabled("VMI_ALERT_STREAM_ENABLE", 0);
+    stream_fd = -1;
+    stream_next_reconnect_ns = 0;
+    stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
+
+    const char *host = getenv("VMI_ALERT_STREAM_HOST");
+    if (!host || !*host)
+        host = STREAM_DEFAULT_HOST;
+    strncpy(stream_host, host, sizeof(stream_host) - 1);
+    stream_host[sizeof(stream_host) - 1] = '\0';
+
+    const char *port_env = getenv("VMI_ALERT_STREAM_PORT");
+    if (!port_env || !*port_env) {
+        stream_port = STREAM_DEFAULT_PORT;
+    } else {
+        char *end = NULL;
+        unsigned long port = strtoul(port_env, &end, 10);
+        if (end != port_env && port > 0 && port <= 65535UL)
+            stream_port = (uint16_t)port;
+        else
+            stream_port = STREAM_DEFAULT_PORT;
+    }
+
+    if (stream_enabled) {
+        printf("[Bridge] Alert stream enabled: %s:%u\n",
+               stream_host,
+               (unsigned int)stream_port);
+    }
+}
+
+static void stream_disconnect(void) {
+    if (stream_fd >= 0) {
+        close(stream_fd);
+        stream_fd = -1;
+    }
+}
+
+static void schedule_stream_reconnect(uint64_t now_ns) {
+    stream_next_reconnect_ns = now_ns + stream_reconnect_backoff_ns;
+    if (stream_reconnect_backoff_ns < STREAM_RECONNECT_MAX_NS / 2ULL) {
+        stream_reconnect_backoff_ns *= 2ULL;
+    } else {
+        stream_reconnect_backoff_ns = STREAM_RECONNECT_MAX_NS;
+    }
+}
+
+static int stream_connect_if_needed(uint64_t now_ns) {
+    if (!stream_enabled)
+        return -1;
+
+    if (stream_fd >= 0)
+        return 0;
+
+    if (stream_next_reconnect_ns != 0 && now_ns < stream_next_reconnect_ns)
+        return -1;
+
+    int fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd < 0) {
+        schedule_stream_reconnect(now_ns);
+        return -1;
+    }
+
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(stream_port);
+
+    const char *connect_host = stream_host;
+    if (strcmp(connect_host, "localhost") == 0)
+        connect_host = "127.0.0.1";
+
+    if (inet_pton(AF_INET, connect_host, &addr.sin_addr) != 1) {
+        close(fd);
+        schedule_stream_reconnect(now_ns);
+        fprintf(stderr,
+                "[Bridge] WARN: invalid stream host '%s' (IPv4 required)\n",
+                stream_host);
+        return -1;
+    }
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        close(fd);
+        schedule_stream_reconnect(now_ns);
+        return -1;
+    }
+
+    stream_fd = fd;
+    stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
+    stream_next_reconnect_ns = 0;
+    printf("[Bridge] Connected alert stream to %s:%u\n",
+           stream_host,
+           (unsigned int)stream_port);
+    return 0;
+}
+
+static void json_escape_string(const char *src, char *dst, size_t dst_size) {
+    if (!src || !dst || dst_size == 0)
+        return;
+
+    size_t w = 0;
+    for (size_t r = 0; src[r] != '\0' && w + 1 < dst_size; r++) {
+        unsigned char c = (unsigned char)src[r];
+        if (c == '"' || c == '\\') {
+            if (w + 2 >= dst_size)
+                break;
+            dst[w++] = '\\';
+            dst[w++] = (char)c;
+        } else if (c == '\n') {
+            if (w + 2 >= dst_size)
+                break;
+            dst[w++] = '\\';
+            dst[w++] = 'n';
+        } else if (c < 0x20) {
+            if (w + 1 >= dst_size)
+                break;
+            dst[w++] = '?';
+        } else {
+            dst[w++] = (char)c;
+        }
+    }
+
+    dst[w] = '\0';
+}
+
+static int stream_send_alert(const struct vmi_alert *alert) {
+    if (!alert)
+        return -1;
+
+    if (stream_connect_if_needed(alert->timestamp_ns) < 0)
+        return -1;
+
+    char reason_json[2 * VMI_ALERT_REASON_MAX + 8];
+    char payload[512];
+    json_escape_string(alert->reason, reason_json, sizeof(reason_json));
+
+    int len = snprintf(payload,
+                       sizeof(payload),
+                       "{\"pid\":%u,\"threat_level\":%u,"
+                       "\"timestamp_ns\":%lu,\"reason\":\"%s\"}\n",
+                       alert->pid,
+                       alert->threat_level,
+                       alert->timestamp_ns,
+                       reason_json);
+    if (len <= 0 || (size_t)len >= sizeof(payload))
+        return -1;
+
+    ssize_t written = write(stream_fd, payload, (size_t)len);
+    if (written != len) {
+        uint64_t now_ns = alert->timestamp_ns;
+        stream_disconnect();
+        schedule_stream_reconnect(now_ns);
+        return -1;
+    }
+
+    return 0;
+}
+
 // ──────────────────────────────────────────────
 // Internal: Get monotonic nanosecond timestamp
 // ──────────────────────────────────────────────
@@ -111,6 +322,111 @@ static uint64_t get_timestamp_ns(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+}
+
+static struct pid_policy_state *get_policy_state(uint32_t pid) {
+    struct pid_policy_state *free_slot = NULL;
+
+    for (int i = 0; i < PID_POLICY_TABLE_SIZE; i++) {
+        if (policy_table[i].used && policy_table[i].pid == pid)
+            return &policy_table[i];
+        if (!policy_table[i].used && !free_slot)
+            free_slot = &policy_table[i];
+    }
+
+    if (!free_slot)
+        free_slot = &policy_table[pid % PID_POLICY_TABLE_SIZE];
+
+    memset(free_slot, 0, sizeof(*free_slot));
+    free_slot->pid = pid;
+    free_slot->used = 1;
+    return free_slot;
+}
+
+static uint32_t apply_threat_policy(uint32_t pid,
+                                    uint32_t requested_threat,
+                                    uint64_t now_ns,
+                                    int *suppress_emit,
+                                    int *escalated) {
+    if (suppress_emit)
+        *suppress_emit = 0;
+    if (escalated)
+        *escalated = 0;
+
+    struct pid_policy_state *state = get_policy_state(pid);
+    if (!state)
+        return requested_threat;
+
+    uint32_t effective = requested_threat;
+
+    if (requested_threat == VMI_THREAT_SUSPICIOUS) {
+        if (state->burst_window_start_ns == 0 ||
+            now_ns - state->burst_window_start_ns > POLICY_ESCALATION_WINDOW_NS) {
+            state->burst_window_start_ns = now_ns;
+            state->suspicious_burst = 0;
+        }
+
+        state->suspicious_burst++;
+        if (state->suspicious_burst >= POLICY_ESCALATION_COUNT) {
+            effective = VMI_THREAT_MALICIOUS;
+            if (escalated)
+                *escalated = 1;
+        }
+    } else {
+        state->suspicious_burst = 0;
+        state->burst_window_start_ns = now_ns;
+    }
+
+    if (effective == state->last_effective_threat &&
+        now_ns - state->last_emit_ns < POLICY_DEDUP_WINDOW_NS) {
+        if (!(escalated && *escalated)) {
+            if (suppress_emit)
+                *suppress_emit = 1;
+        }
+    }
+
+    if (!(suppress_emit && *suppress_emit)) {
+        state->last_effective_threat = effective;
+        state->last_emit_ns = now_ns;
+    }
+
+    return effective;
+}
+
+static int emit_alert(struct queued_alert *queued) {
+    if (!queued)
+        return -1;
+
+    int map_rc = write_alert_to_map(&queued->alert);
+    (void)stream_send_alert(&queued->alert);
+    total_alerts_processed++;
+    return map_rc;
+}
+
+static void enqueue_alert(uint32_t pid,
+                          uint32_t threat_level,
+                          const char *reason,
+                          int immediate) {
+    if (alert_count >= ALERT_QUEUE_SIZE)
+        bridge_flush_alerts();
+
+    if (alert_count >= ALERT_QUEUE_SIZE)
+        return;
+
+    struct queued_alert *queued = &alert_queue[alert_count++];
+    memset(queued, 0, sizeof(*queued));
+    queued->alert.pid = pid;
+    queued->alert.threat_level = threat_level;
+    queued->alert.timestamp_ns = get_timestamp_ns();
+    strncpy(queued->alert.reason,
+            reason ? reason : "unknown",
+            sizeof(queued->alert.reason) - 1);
+    queued->alert.reason[sizeof(queued->alert.reason) - 1] = '\0';
+
+    if (immediate) {
+        emit_alert(queued);
+        queued->sent_immediately = 1;
+    }
 }
 
 // ──────────────────────────────────────────────
@@ -125,8 +441,11 @@ int bridge_init(void) {
     printf("[Bridge] Map path: %s\n", VMI_ALERT_MAP_PATH);
     printf("[Bridge] Max entries: %d\n", VMI_ALERT_MAP_SIZE);
 
+    parse_stream_config();
     alert_count = 0;
     memset(alert_queue, 0, sizeof(alert_queue));
+    memset(policy_table, 0, sizeof(policy_table));
+    total_alerts_processed = 0;
 
     if (open_bpf_map() < 0) {
         printf("[Bridge] WARN: Map not available — alerts will be "
@@ -149,27 +468,28 @@ void bridge_teardown(void) {
         bpf_map_fd = -1;
     }
 
-    printf("[Bridge] Bridge destroyed. %d total alerts processed.\n",
-           alert_count);
+    stream_disconnect();
+
+    printf("[Bridge] Bridge destroyed. %lu total alerts processed.\n",
+           total_alerts_processed);
 }
 
 void bridge_signal_malicious(uint32_t pid, const char *reason) {
     printf("[Bridge] ⚠ MALICIOUS SIGNAL: PID %u — %s\n", pid, reason);
-
-    if (alert_count >= ALERT_QUEUE_SIZE) {
-        fprintf(stderr, "[Bridge] Alert queue full! Flushing...\n");
-        bridge_flush_alerts();
+    int suppress = 0;
+    int escalated = 0;
+    uint64_t now_ns = get_timestamp_ns();
+    uint32_t effective = apply_threat_policy(pid,
+                                             VMI_THREAT_MALICIOUS,
+                                             now_ns,
+                                             &suppress,
+                                             &escalated);
+    if (!suppress) {
+        enqueue_alert(pid,
+                      effective,
+                      reason,
+                      1);
     }
-
-    struct vmi_alert *alert = &alert_queue[alert_count++];
-    alert->pid = pid;
-    alert->threat_level = VMI_THREAT_MALICIOUS;
-    alert->timestamp_ns = get_timestamp_ns();
-    strncpy(alert->reason, reason, sizeof(alert->reason) - 1);
-    alert->reason[sizeof(alert->reason) - 1] = '\0';
-
-    // Immediate write for malicious alerts — don't wait for flush
-    write_alert_to_map(alert);
 
     printf("[Bridge] → Hyperion XDP will DROP all packets from PID %u\n",
            pid);
@@ -179,18 +499,35 @@ void bridge_signal_malicious(uint32_t pid, const char *reason) {
 void bridge_signal_suspicious(uint32_t pid, const char *reason) {
     printf("[Bridge] △ SUSPICIOUS SIGNAL: PID %u — %s\n", pid, reason);
 
-    if (alert_count >= ALERT_QUEUE_SIZE) {
-        bridge_flush_alerts();
+    int suppress = 0;
+    int escalated = 0;
+    uint64_t now_ns = get_timestamp_ns();
+    uint32_t effective = apply_threat_policy(pid,
+                                             VMI_THREAT_SUSPICIOUS,
+                                             now_ns,
+                                             &suppress,
+                                             &escalated);
+
+    if (escalated) {
+        printf("[Bridge] Escalation policy triggered: PID %u now MALICIOUS\n",
+               pid);
     }
 
-    struct vmi_alert *alert = &alert_queue[alert_count++];
-    alert->pid = pid;
-    alert->threat_level = VMI_THREAT_SUSPICIOUS;
-    alert->timestamp_ns = get_timestamp_ns();
-    strncpy(alert->reason, reason, sizeof(alert->reason) - 1);
-    alert->reason[sizeof(alert->reason) - 1] = '\0';
+    if (suppress) {
+        printf("[Bridge] Duplicate alert suppressed for PID %u\n", pid);
+        return;
+    }
 
-    // Suspicious alerts are batched and flushed periodically
+    enqueue_alert(pid,
+                  effective,
+                  reason,
+                  effective == VMI_THREAT_MALICIOUS);
+
+    if (effective == VMI_THREAT_MALICIOUS) {
+        printf("[Bridge] → Hyperion XDP will DROP all packets from PID %u\n",
+               pid);
+        printf("[Bridge] → Telos Runtime will elevate to TAINT_CRITICAL\n");
+    }
 }
 
 void bridge_flush_alerts(void) {
@@ -199,11 +536,19 @@ void bridge_flush_alerts(void) {
     printf("[Bridge] Flushing %d queued alerts to map...\n", alert_count);
 
     int written = 0;
+    int already_dispatched = 0;
     for (int i = 0; i < alert_count; i++) {
-        if (write_alert_to_map(&alert_queue[i]) == 0)
+        if (alert_queue[i].sent_immediately) {
+            already_dispatched++;
+            continue;
+        }
+
+        if (emit_alert(&alert_queue[i]) == 0)
             written++;
     }
 
-    printf("[Bridge] Flushed %d/%d alerts\n", written, alert_count);
+    printf("[Bridge] Flushed %d batched alerts (%d already dispatched)\n",
+           written,
+           already_dispatched);
     alert_count = 0;
 }

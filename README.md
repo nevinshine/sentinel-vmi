@@ -31,7 +31,7 @@ wire-speed packet drops.
 | 1 | Raw guest memory introspection | Implemented baseline (QMP handshake + live memslot discovery) |
 | 2 | task_struct parsing and process intelligence | Implemented with BTF-first fallback and anomaly detectors |
 | 3 | NPT Guard and kernel integrity enforcement | Hardened baseline implemented (multi-region integrity + revalidation) |
-| 4 | Cross-layer bridge to Hyperion/Telos | Rebuilding |
+| 4 | Cross-layer bridge to Hyperion/Telos | In progress (policy orchestration + resilient stream transport) |
 | 5 | Advanced introspection (network/fs/module/hypervisor hardening) | Planned |
 | 6 | Telos Ring -1 integration and formal verification | Future |
 
@@ -84,3 +84,17 @@ Set guest virtual addresses as environment variables before launch; each region 
 Optional testing override:
 
 - VMI_ALLOW_LEGIT_KERNEL_PATCH=1 allows sys_call_table and kernel_text writes to be treated as legitimate in staging tests only.
+
+## Phase 4 Producer Policy
+
+Bridge producer behavior now applies a local orchestration policy before writing alerts:
+
+- Duplicate suppression for repeated identical alerts in a short window
+- Suspicious burst escalation: repeated suspicious events for one PID are promoted to malicious
+- Immediate dispatch for malicious alerts, batched flush for suspicious alerts
+
+Optional downstream stream controls:
+
+- VMI_ALERT_STREAM_ENABLE=1 enables downstream stream publishing
+- VMI_ALERT_STREAM_HOST=127.0.0.1 (default)
+- VMI_ALERT_STREAM_PORT=8421 (default)

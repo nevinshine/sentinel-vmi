@@ -28,7 +28,7 @@ wire-speed packet drops.
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| 1 | Raw guest memory introspection | Rebuilding |
+| 1 | Raw guest memory introspection | Implemented baseline (QMP handshake + live memslot discovery) |
 | 2 | task_struct parsing and process list | Rebuilding |
 | 3 | NPT Guard — sys_call_table protection | Rebuilding |
 | 4 | Cross-layer bridge to Hyperion/Telos | Rebuilding |

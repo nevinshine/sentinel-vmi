@@ -28,6 +28,12 @@ static void test_session_lifecycle(void) {
     // in CI, but it should handle the failure gracefully
     struct vmi_session *s = kvmi_setup("test-vm-nonexistent");
     if (s) {
+        if (s->qemu_pid != -1 || s->control_fd != -1) {
+            FAIL("unexpected control channel state for missing VM");
+            kvmi_teardown(s);
+            return;
+        }
+
         // If we got a session (KVM available), tear it down
         kvmi_teardown(s);
         PASS();
@@ -35,6 +41,35 @@ static void test_session_lifecycle(void) {
         // Expected in CI without KVM — still a pass if no crash
         printf("(no KVM) ");
         PASS();
+    }
+}
+
+// ──────────────────────────────────────────────
+// Test: Physical memory write guards
+// ──────────────────────────────────────────────
+
+static void test_write_physical_null(void) {
+    TEST("write_physical_null_guard");
+
+    char buf[16] = {0};
+    int rc = vmi_write_physical(NULL, 0x2000, buf, sizeof(buf));
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for NULL session");
+    }
+}
+
+static void test_write_physical_zero_size(void) {
+    TEST("write_physical_zero_size");
+
+    struct vmi_session s = {0};
+    char buf[16] = {0};
+    int rc = vmi_write_physical(&s, 0x2000, buf, 0);
+    if (rc < 0) {
+        PASS();
+    } else {
+        FAIL("should return -1 for zero size");
     }
 }
 
@@ -106,6 +141,8 @@ int main(void) {
     test_session_lifecycle();
     test_read_physical_null();
     test_read_physical_zero_size();
+    test_write_physical_null();
+    test_write_physical_zero_size();
     test_gva_to_gpa_null();
     test_read_virtual_null();
 

@@ -12,6 +12,7 @@
 #define VMI_MAX_VCPUS       64
 #define VMI_PAGE_SIZE       4096
 #define VMI_PAGE_SHIFT      12
+#define VMI_MEMSLOT_F_REMOTE_PROCESS (1U << 31)
 
 // KVM memslot for guest-physical → host-virtual translation
 struct vmi_memslot {
@@ -31,6 +32,10 @@ struct vmi_session {
     // Guest memory map (memslots)
     struct vmi_memslot *memslots;
     int      nr_memslots;
+
+    // Runtime attachment metadata
+    int      qemu_pid;                      // target QEMU PID (if discovered)
+    int      control_fd;                    // QMP/KVMI control channel fd
 
     // NPT Guard state
     uint64_t syscall_table_gpa;             // guest-physical addr of sys_call_table

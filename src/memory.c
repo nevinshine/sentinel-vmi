@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <sys/uio.h>
 
 // x86-64 page table constants
 #define PT_ENTRY_SIZE       8
@@ -30,19 +31,158 @@
 #define PAGE_OFFSET(va) ((va) & 0xFFF)
 
 // ──────────────────────────────────────────────
-// GPA → Host Virtual via memslot lookup
+// GPA → memslot lookup
 // ──────────────────────────────────────────────
 
-static void *gpa_to_hva(struct vmi_session *s, uint64_t gpa) {
+static struct vmi_memslot *find_memslot(struct vmi_session *s,
+                                        uint64_t gpa,
+                                        uint64_t *offset) {
     for (int i = 0; i < s->nr_memslots; i++) {
         struct vmi_memslot *slot = &s->memslots[i];
         if (gpa >= slot->guest_phys_addr &&
             gpa < slot->guest_phys_addr + slot->memory_size) {
-            uint64_t offset = gpa - slot->guest_phys_addr;
-            return (char *)slot->userspace_addr + offset;
+            if (offset)
+                *offset = gpa - slot->guest_phys_addr;
+            return slot;
         }
     }
     return NULL;
+}
+
+static int read_remote_process(struct vmi_session *s,
+                               uint64_t remote_addr,
+                               void *buf,
+                               size_t size) {
+    if (!s || s->qemu_pid <= 0 || !buf || size == 0)
+        return -1;
+
+    size_t done = 0;
+    while (done < size) {
+        struct iovec local_iov = {
+            .iov_base = (char *)buf + done,
+            .iov_len = size - done,
+        };
+        struct iovec remote_iov = {
+            .iov_base = (void *)(uintptr_t)(remote_addr + done),
+            .iov_len = size - done,
+        };
+
+        ssize_t n = process_vm_readv(s->qemu_pid,
+                                     &local_iov,
+                                     1,
+                                     &remote_iov,
+                                     1,
+                                     0);
+        if (n <= 0)
+            return -1;
+
+        done += (size_t)n;
+    }
+
+    return 0;
+}
+
+static int write_remote_process(struct vmi_session *s,
+                                uint64_t remote_addr,
+                                const void *buf,
+                                size_t size) {
+    if (!s || s->qemu_pid <= 0 || !buf || size == 0)
+        return -1;
+
+    size_t done = 0;
+    while (done < size) {
+        struct iovec local_iov = {
+            .iov_base = (void *)((const char *)buf + done),
+            .iov_len = size - done,
+        };
+        struct iovec remote_iov = {
+            .iov_base = (void *)(uintptr_t)(remote_addr + done),
+            .iov_len = size - done,
+        };
+
+        ssize_t n = process_vm_writev(s->qemu_pid,
+                                      &local_iov,
+                                      1,
+                                      &remote_iov,
+                                      1,
+                                      0);
+        if (n <= 0)
+            return -1;
+
+        done += (size_t)n;
+    }
+
+    return 0;
+}
+
+static int read_via_memslots(struct vmi_session *s,
+                             uint64_t gpa,
+                             void *buf,
+                             size_t size) {
+    if (!s || !buf || size == 0 || !s->memslots || s->nr_memslots <= 0)
+        return -1;
+
+    size_t done = 0;
+    while (done < size) {
+        uint64_t current_gpa = gpa + done;
+        uint64_t offset = 0;
+        struct vmi_memslot *slot = find_memslot(s, current_gpa, &offset);
+        if (!slot)
+            return -1;
+
+        uint64_t available = slot->memory_size - offset;
+        size_t chunk = size - done;
+        if ((uint64_t)chunk > available)
+            chunk = (size_t)available;
+
+        uint64_t host_addr = (uint64_t)(uintptr_t)slot->userspace_addr + offset;
+        if (slot->flags & VMI_MEMSLOT_F_REMOTE_PROCESS) {
+            if (read_remote_process(s, host_addr, (char *)buf + done, chunk) < 0)
+                return -1;
+        } else {
+            memcpy((char *)buf + done, (void *)(uintptr_t)host_addr, chunk);
+        }
+
+        done += chunk;
+    }
+
+    return 0;
+}
+
+static int write_via_memslots(struct vmi_session *s,
+                              uint64_t gpa,
+                              const void *buf,
+                              size_t size) {
+    if (!s || !buf || size == 0 || !s->memslots || s->nr_memslots <= 0)
+        return -1;
+
+    size_t done = 0;
+    while (done < size) {
+        uint64_t current_gpa = gpa + done;
+        uint64_t offset = 0;
+        struct vmi_memslot *slot = find_memslot(s, current_gpa, &offset);
+        if (!slot)
+            return -1;
+
+        uint64_t available = slot->memory_size - offset;
+        size_t chunk = size - done;
+        if ((uint64_t)chunk > available)
+            chunk = (size_t)available;
+
+        uint64_t host_addr = (uint64_t)(uintptr_t)slot->userspace_addr + offset;
+        if (slot->flags & VMI_MEMSLOT_F_REMOTE_PROCESS) {
+            if (write_remote_process(s, host_addr,
+                                     (const char *)buf + done, chunk) < 0) {
+                return -1;
+            }
+        } else {
+            memcpy((void *)(uintptr_t)host_addr, (const char *)buf + done, chunk);
+        }
+
+        done += chunk;
+    }
+
+    return 0;
 }
 
 // ──────────────────────────────────────────────
@@ -77,12 +217,9 @@ int vmi_read_physical(struct vmi_session *s,
                       size_t size) {
     if (!s || !buf || size == 0) return -1;
 
-    // Try memslot-mapped access first (fastest path)
-    void *hva = gpa_to_hva(s, gpa);
-    if (hva) {
-        memcpy(buf, hva, size);
+    // Try memslot-mapped access first
+    if (read_via_memslots(s, gpa, buf, size) == 0)
         return 0;
-    }
 
     // Fallback: /dev/mem (requires permissions)
     if (read_via_devmem(gpa, buf, size) == 0)
@@ -103,11 +240,8 @@ int vmi_write_physical(struct vmi_session *s,
                        size_t size) {
     if (!s || !buf || size == 0) return -1;
 
-    void *hva = gpa_to_hva(s, gpa);
-    if (hva) {
-        memcpy(hva, buf, size);
+    if (write_via_memslots(s, gpa, buf, size) == 0)
         return 0;
-    }
 
     fprintf(stderr, "[Memory] Failed to write GPA 0x%lx (size %zu)\n",
             gpa, size);

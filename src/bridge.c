@@ -36,6 +36,8 @@
 
 #define STREAM_DEFAULT_HOST "127.0.0.1"
 #define STREAM_DEFAULT_PORT 8421U
+#define STREAM_MODE_TCP "tcp"
+#define STREAM_MODE_HELPER "helper"
 #define STREAM_RECONNECT_BASE_NS (1ULL * 1000000000ULL)
 #define STREAM_RECONNECT_MAX_NS  (30ULL * 1000000000ULL)
 
@@ -64,6 +66,9 @@ static int stream_enabled = 0;
 static int stream_fd = -1;
 static char stream_host[64];
 static uint16_t stream_port = STREAM_DEFAULT_PORT;
+static char stream_mode[16];
+static char stream_helper_cmd[256];
+static FILE *stream_helper_fp = NULL;
 static uint64_t stream_next_reconnect_ns = 0;
 static uint64_t stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
 
@@ -159,8 +164,15 @@ static int env_enabled(const char *key, int default_value) {
 static void parse_stream_config(void) {
     stream_enabled = env_enabled("VMI_ALERT_STREAM_ENABLE", 0);
     stream_fd = -1;
+    stream_helper_fp = NULL;
     stream_next_reconnect_ns = 0;
     stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
+
+    const char *mode = getenv("VMI_ALERT_STREAM_MODE");
+    if (!mode || !*mode)
+        mode = STREAM_MODE_TCP;
+    strncpy(stream_mode, mode, sizeof(stream_mode) - 1);
+    stream_mode[sizeof(stream_mode) - 1] = '\0';
 
     const char *host = getenv("VMI_ALERT_STREAM_HOST");
     if (!host || !*host)
@@ -180,10 +192,31 @@ static void parse_stream_config(void) {
             stream_port = STREAM_DEFAULT_PORT;
     }
 
+    const char *helper_cmd = getenv("VMI_ALERT_GRPC_HELPER_CMD");
+    if (!helper_cmd || !*helper_cmd)
+        helper_cmd = "";
+    strncpy(stream_helper_cmd, helper_cmd, sizeof(stream_helper_cmd) - 1);
+    stream_helper_cmd[sizeof(stream_helper_cmd) - 1] = '\0';
+
+    if (stream_enabled && strcmp(stream_mode, STREAM_MODE_HELPER) == 0 &&
+        stream_helper_cmd[0] == '\0') {
+        fprintf(stderr,
+                "[Bridge] WARN: helper mode selected but "
+                "VMI_ALERT_GRPC_HELPER_CMD is empty; disabling stream\n");
+        stream_enabled = 0;
+    }
+
     if (stream_enabled) {
-        printf("[Bridge] Alert stream enabled: %s:%u\n",
-               stream_host,
-               (unsigned int)stream_port);
+        if (strcmp(stream_mode, STREAM_MODE_HELPER) == 0) {
+            printf("[Bridge] Alert stream enabled: mode=%s cmd='%s'\n",
+                   stream_mode,
+                   stream_helper_cmd);
+        } else {
+            printf("[Bridge] Alert stream enabled: mode=%s target=%s:%u\n",
+                   stream_mode,
+                   stream_host,
+                   (unsigned int)stream_port);
+        }
     }
 }
 
@@ -191,6 +224,11 @@ static void stream_disconnect(void) {
     if (stream_fd >= 0) {
         close(stream_fd);
         stream_fd = -1;
+    }
+
+    if (stream_helper_fp) {
+        (void)pclose(stream_helper_fp);
+        stream_helper_fp = NULL;
     }
 }
 
@@ -207,11 +245,30 @@ static int stream_connect_if_needed(uint64_t now_ns) {
     if (!stream_enabled)
         return -1;
 
-    if (stream_fd >= 0)
+    if (strcmp(stream_mode, STREAM_MODE_HELPER) == 0) {
+        if (stream_helper_fp)
+            return 0;
+    } else if (stream_fd >= 0) {
         return 0;
+    }
 
     if (stream_next_reconnect_ns != 0 && now_ns < stream_next_reconnect_ns)
         return -1;
+
+    if (strcmp(stream_mode, STREAM_MODE_HELPER) == 0) {
+        FILE *fp = popen(stream_helper_cmd, "w");
+        if (!fp) {
+            schedule_stream_reconnect(now_ns);
+            return -1;
+        }
+
+        setvbuf(fp, NULL, _IOLBF, 0);
+        stream_helper_fp = fp;
+        stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
+        stream_next_reconnect_ns = 0;
+        printf("[Bridge] Connected alert helper stream\n");
+        return 0;
+    }
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
@@ -302,6 +359,20 @@ static int stream_send_alert(const struct vmi_alert *alert) {
                        reason_json);
     if (len <= 0 || (size_t)len >= sizeof(payload))
         return -1;
+
+    if (strcmp(stream_mode, STREAM_MODE_HELPER) == 0) {
+        if (!stream_helper_fp)
+            return -1;
+
+        if (fputs(payload, stream_helper_fp) == EOF || fflush(stream_helper_fp) != 0) {
+            uint64_t now_ns = alert->timestamp_ns;
+            stream_disconnect();
+            schedule_stream_reconnect(now_ns);
+            return -1;
+        }
+
+        return 0;
+    }
 
     ssize_t written = write(stream_fd, payload, (size_t)len);
     if (written != len) {

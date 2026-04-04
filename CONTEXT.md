@@ -95,6 +95,7 @@ Components:
 - Signal to Telos Runtime: elevate taint to TAINT_CRITICAL
 - Producer orchestration policy (dedup + suspicious burst escalation)
 - Resilient downstream alert stream transport with reconnect backoff
+- Helper-based gRPC compatibility hook for sidecar forwarding
 
 Signal flow:
 ```
@@ -185,7 +186,7 @@ sentinel-vmi/
 Phase 1: Baseline implemented and test-validated.
 Phase 2: Implemented with BTF-first semantic extraction fallback and anomaly analytics.
 Phase 3: Hardened baseline implemented with multi-region integrity guard and anomaly classification.
-Phase 4: In-progress with policy orchestration and resilient downstream transport foundation.
+Phase 4: In-progress with policy orchestration and resilient transport (TCP + helper gRPC compatibility).
 Phase 5: Planned after Phase 4 completion.
 Phase 6: Future language/runtime integration milestone.
 

@@ -50,9 +50,10 @@ Done:
 - Finalized producer-side alert schema constants and fallback path definitions
 - Implemented threat-level orchestration policy (dedup + suspicious burst escalation)
 - Added resilient downstream alert stream transport with reconnect backoff (TCP JSONL)
+- Added helper-based gRPC compatibility transport hook for sidecar forwarding
 
 Remaining validation/work:
-- Wire stream transport to gRPC endpoint compatibility layer
+- Validate helper-stream interoperability with gRPC forwarder sidecar
 - Validate cross-component policy effects with Hyperion/Telos integration tests
 
 ## Deliverable Matrix (Now vs Target)
@@ -77,7 +78,7 @@ Remaining validation/work:
 
 ### Cross-layer
 - Bridge and map signaling baseline: done
-- gRPC policy stream: in progress (resilient transport path implemented)
+- gRPC policy stream: in progress (transport + helper compatibility implemented)
 - Full stack orchestration rules: in progress
 
 ## Short-Term Acceptance Criteria

@@ -96,5 +96,11 @@ Bridge producer behavior now applies a local orchestration policy before writing
 Optional downstream stream controls:
 
 - VMI_ALERT_STREAM_ENABLE=1 enables downstream stream publishing
-- VMI_ALERT_STREAM_HOST=127.0.0.1 (default)
-- VMI_ALERT_STREAM_PORT=8421 (default)
+- VMI_ALERT_STREAM_MODE=tcp|helper (default: tcp)
+- VMI_ALERT_STREAM_HOST=127.0.0.1 (default for tcp mode)
+- VMI_ALERT_STREAM_PORT=8421 (default for tcp mode)
+- VMI_ALERT_GRPC_HELPER_CMD="<command>" (required for helper mode; bridge writes JSONL alerts to helper stdin)
+
+gRPC compatibility note:
+
+- Use helper mode with a local sidecar command that forwards JSONL alerts to your gRPC endpoint.

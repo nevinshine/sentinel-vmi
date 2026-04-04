@@ -155,6 +155,24 @@ static void test_suspicious_escalates_to_malicious(void) {
     }
 }
 
+static void test_stream_helper_mode_graceful(void) {
+    TEST("stream_helper_mode_graceful");
+
+    setenv("VMI_ALERT_STREAM_ENABLE", "1", 1);
+    setenv("VMI_ALERT_STREAM_MODE", "helper", 1);
+    setenv("VMI_ALERT_GRPC_HELPER_CMD", "cat >/dev/null", 1);
+    remove_fallback_log();
+
+    bridge_init();
+    bridge_signal_suspicious(88, "helper_mode_test");
+    bridge_signal_malicious(88, "helper_mode_escalated");
+    bridge_flush_alerts();
+    bridge_teardown();
+
+    setenv("VMI_ALERT_STREAM_ENABLE", "0", 1);
+    PASS();
+}
+
 // ──────────────────────────────────────────────
 // Test: Alert struct layout
 // ──────────────────────────────────────────────
@@ -187,6 +205,7 @@ int main(void) {
     test_signal_suspicious();
     test_malicious_not_duplicated_on_flush();
     test_suspicious_escalates_to_malicious();
+    test_stream_helper_mode_graceful();
 
     printf("\n[Test] ───────────────────────────────────────\n");
     printf("[Test] Results: %d passed, %d failed\n",

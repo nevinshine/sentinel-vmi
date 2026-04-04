@@ -177,13 +177,18 @@ sentinel-vmi/
 └── README.md
 
 ## Current Status
-Phase 1: Previously implemented, lost in system wipe. Rebuilding.
-Phase 2: Previously implemented, lost in system wipe. Rebuilding.
-Phase 3: Previously implemented, lost in system wipe. Rebuilding.
-Phase 4: Previously implemented, lost in system wipe. Rebuilding.
+Phase 1: Baseline implemented and test-validated.
+Phase 2: Rebuilding and expanding toward BTF-first semantic extraction.
+Phase 3: Rebuilding and expanding toward full NPT policy/signature coverage.
+Phase 4: Rebuilding and expanding cross-layer response orchestration.
+Phase 5: Planned after Phase 4 completion.
+Phase 6: Future language/runtime integration milestone.
 
-All four phases were working. This is a rebuild, not a first build.
-The architecture is proven. Just needs reimplementation.
+The architecture is proven. This repository tracks the rebuild in increments.
+
+See planning docs for the canonical roadmap:
+- docs/complete-feature-spec.md
+- docs/rebuild-roadmap.md
 
 ## The One Rule
 Push to GitHub after every session.

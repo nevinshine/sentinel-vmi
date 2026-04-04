@@ -22,6 +22,7 @@
 #define PT_WRITABLE         (1ULL << 1)
 #define PT_PAGESIZE         (1ULL << 7)   // huge page bit
 #define PT_ADDR_MASK        0x000FFFFFFFFFF000ULL
+#define VMI_IO_RETRY_MAX    3
 
 // Extract page table indices from a virtual address
 #define PML4_INDEX(va)  (((va) >> 39) & 0x1FF)
@@ -49,6 +50,10 @@ static struct vmi_memslot *find_memslot(struct vmi_session *s,
     return NULL;
 }
 
+static int is_transient_errno(int err) {
+    return err == EINTR || err == EAGAIN || err == EBUSY || err == ETIMEDOUT;
+}
+
 static int read_remote_process(struct vmi_session *s,
                                uint64_t remote_addr,
                                void *buf,
@@ -57,6 +62,7 @@ static int read_remote_process(struct vmi_session *s,
         return -1;
 
     size_t done = 0;
+    int retries = 0;
     while (done < size) {
         struct iovec local_iov = {
             .iov_base = (char *)buf + done,
@@ -73,9 +79,17 @@ static int read_remote_process(struct vmi_session *s,
                                      &remote_iov,
                                      1,
                                      0);
-        if (n <= 0)
+        if (n < 0) {
+            if (is_transient_errno(errno) && retries < VMI_IO_RETRY_MAX) {
+                retries++;
+                continue;
+            }
+            return -1;
+        }
+        if (n == 0)
             return -1;
 
+        retries = 0;
         done += (size_t)n;
     }
 
@@ -90,6 +104,7 @@ static int write_remote_process(struct vmi_session *s,
         return -1;
 
     size_t done = 0;
+    int retries = 0;
     while (done < size) {
         struct iovec local_iov = {
             .iov_base = (void *)((const char *)buf + done),
@@ -106,9 +121,17 @@ static int write_remote_process(struct vmi_session *s,
                                       &remote_iov,
                                       1,
                                       0);
-        if (n <= 0)
+        if (n < 0) {
+            if (is_transient_errno(errno) && retries < VMI_IO_RETRY_MAX) {
+                retries++;
+                continue;
+            }
+            return -1;
+        }
+        if (n == 0)
             return -1;
 
+        retries = 0;
         done += (size_t)n;
     }
 
@@ -202,9 +225,29 @@ static int read_via_devmem(uint64_t gpa, void *buf, size_t size) {
         return -1;
     }
 
-    ssize_t n = read(fd, buf, size);
+    size_t done = 0;
+    int retries = 0;
+    while (done < size) {
+        ssize_t n = read(fd, (char *)buf + done, size - done);
+        if (n < 0) {
+            if (is_transient_errno(errno) && retries < VMI_IO_RETRY_MAX) {
+                retries++;
+                continue;
+            }
+            close(fd);
+            return -1;
+        }
+        if (n == 0) {
+            close(fd);
+            return -1;
+        }
+
+        retries = 0;
+        done += (size_t)n;
+    }
+
     close(fd);
-    return (n == (ssize_t)size) ? 0 : -1;
+    return 0;
 }
 
 // ──────────────────────────────────────────────

@@ -32,6 +32,13 @@ wire-speed packet drops.
 | 2 | task_struct parsing and process list | Rebuilding |
 | 3 | NPT Guard — sys_call_table protection | Rebuilding |
 | 4 | Cross-layer bridge to Hyperion/Telos | Rebuilding |
+| 5 | Advanced introspection (network/fs/module/hypervisor hardening) | Planned |
+| 6 | Telos Ring -1 integration and formal verification | Future |
+
+## Planning Documents
+
+- [Complete feature specification](docs/complete-feature-spec.md)
+- [Rebuild roadmap](docs/rebuild-roadmap.md)
 
 ## Requirements
 

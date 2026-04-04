@@ -125,52 +125,52 @@ jobs:
           done
           
           # Create init script that tests kernel features
-          cat > initramfs/init << 'EOF'
-#!/bin/sh
-echo "========================================="
-echo "Sentinel VMI Test Kernel"
-echo "========================================="
-mount -t proc none /proc
-mount -t sysfs none /sys
-mount -t devtmpfs none /dev 2>/dev/null || true
-
-echo ""
-echo "Kernel version:"
-uname -a
-
-echo ""
-echo "Checking KVM support..."
-if [ -e /dev/kvm ]; then
-  echo "✓ /dev/kvm exists"
-else
-  echo "⚠ /dev/kvm not found (expected without nested virtualization)"
-fi
-
-echo ""
-echo "Checking CPU features:"
-grep -E "svm|vmx" /proc/cpuinfo | head -1 || echo "No VMX/SVM in virtualized environment"
-
-echo ""
-echo "Checking BTF (required for VMI):"
-if [ -e /sys/kernel/btf/vmlinux ]; then
-  echo "✓ BTF vmlinux available"
-  ls -lh /sys/kernel/btf/vmlinux
-else
-  echo "✗ BTF not available"
-fi
-
-echo ""
-echo "Checking page table features:"
-dmesg | grep -i "page table" | head -3 || echo "No page table info"
-
-echo ""
-echo "========================================="
-echo "✓ Boot test completed successfully"
-echo "========================================="
-
-sleep 2
-poweroff -f
-EOF
+          cat > initramfs/init << 'INITEOF'
+          #!/bin/sh
+          echo "========================================="
+          echo "Sentinel VMI Test Kernel"
+          echo "========================================="
+          mount -t proc none /proc
+          mount -t sysfs none /sys
+          mount -t devtmpfs none /dev 2>/dev/null || true
+          
+          echo ""
+          echo "Kernel version:"
+          uname -a
+          
+          echo ""
+          echo "Checking KVM support..."
+          if [ -e /dev/kvm ]; then
+            echo "OK /dev/kvm exists"
+          else
+            echo "WARN /dev/kvm not found (expected without nested virtualization)"
+          fi
+          
+          echo ""
+          echo "Checking CPU features:"
+          grep -E "svm|vmx" /proc/cpuinfo | head -1 || echo "No VMX/SVM in virtualized environment"
+          
+          echo ""
+          echo "Checking BTF (required for VMI):"
+          if [ -e /sys/kernel/btf/vmlinux ]; then
+            echo "OK BTF vmlinux available"
+            ls -lh /sys/kernel/btf/vmlinux
+          else
+            echo "ERROR BTF not available"
+          fi
+          
+          echo ""
+          echo "Checking page table features:"
+          dmesg | grep -i "page table" | head -3 || echo "No page table info"
+          
+          echo ""
+          echo "========================================="
+          echo "OK Boot test completed successfully"
+          echo "========================================="
+          
+          sleep 2
+          poweroff -f
+          INITEOF
           chmod +x initramfs/init
           
           # Package initramfs

@@ -45,10 +45,10 @@ test-unit: test_memory test_task_walker test_npt test_bridge
 test_memory: tests/test_memory.c src/memory.c src/kvmi_setup.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-test_task_walker: tests/test_task_walker.c src/task_walker.c src/memory.c src/kvmi_setup.c
+test_task_walker: tests/test_task_walker.c src/task_walker.c src/memory.c src/kvmi_setup.c src/bridge.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-test_npt: tests/test_npt.c src/npt_guard.c src/npf_handler.c src/memory.c src/kvmi_setup.c
+test_npt: tests/test_npt.c src/npt_guard.c src/npf_handler.c src/memory.c src/kvmi_setup.c src/bridge.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 test_bridge: tests/test_bridge.c src/bridge.c

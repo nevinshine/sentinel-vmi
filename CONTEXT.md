@@ -142,6 +142,7 @@ Hyperion XDP expects:
 Telos Runtime expects:
   gRPC endpoint: localhost:8421/vmi/alert
   Payload: {pid: u32, threat_type: string, confidence: f32}
+  Bridge helper stream emits JSONL with these fields plus threat_level, timestamp_ns, and reason.
 
 Sentinel-CC expects:
   Nothing directly — VMI detection triggers runtime response

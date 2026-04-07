@@ -101,6 +101,11 @@ Optional downstream stream controls:
 - VMI_ALERT_STREAM_PORT=8421 (default for tcp mode)
 - VMI_ALERT_GRPC_HELPER_CMD="<command>" (required for helper mode; bridge writes JSONL alerts to helper stdin)
 
+Helper convenience behavior:
+
+- If VMI_ALERT_GRPC_HELPER_CMD is set, stream publishing is auto-enabled even when VMI_ALERT_STREAM_ENABLE is unset.
+
 gRPC compatibility note:
 
 - Use helper mode with a local sidecar command that forwards JSONL alerts to your gRPC endpoint.
+- Stream payload includes pid, threat_level, threat_type, confidence, timestamp_ns, and reason.

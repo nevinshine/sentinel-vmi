@@ -72,6 +72,28 @@ static FILE *stream_helper_fp = NULL;
 static uint64_t stream_next_reconnect_ns = 0;
 static uint64_t stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
 
+static const char *threat_type_from_level(uint32_t level) {
+    switch (level) {
+    case VMI_THREAT_MALICIOUS:
+        return "malicious";
+    case VMI_THREAT_SUSPICIOUS:
+        return "suspicious";
+    default:
+        return "clean";
+    }
+}
+
+static double threat_confidence_from_level(uint32_t level) {
+    switch (level) {
+    case VMI_THREAT_MALICIOUS:
+        return 0.98;
+    case VMI_THREAT_SUSPICIOUS:
+        return 0.65;
+    default:
+        return 0.10;
+    }
+}
+
 // ──────────────────────────────────────────────
 // Internal: Open the pinned BPF map
 // ──────────────────────────────────────────────
@@ -174,6 +196,15 @@ static void parse_stream_config(void) {
     strncpy(stream_mode, mode, sizeof(stream_mode) - 1);
     stream_mode[sizeof(stream_mode) - 1] = '\0';
 
+    if (strcmp(stream_mode, STREAM_MODE_TCP) != 0 &&
+        strcmp(stream_mode, STREAM_MODE_HELPER) != 0) {
+        fprintf(stderr,
+                "[Bridge] WARN: unknown stream mode '%s', defaulting to tcp\n",
+                stream_mode);
+        strncpy(stream_mode, STREAM_MODE_TCP, sizeof(stream_mode) - 1);
+        stream_mode[sizeof(stream_mode) - 1] = '\0';
+    }
+
     const char *host = getenv("VMI_ALERT_STREAM_HOST");
     if (!host || !*host)
         host = STREAM_DEFAULT_HOST;
@@ -197,6 +228,11 @@ static void parse_stream_config(void) {
         helper_cmd = "";
     strncpy(stream_helper_cmd, helper_cmd, sizeof(stream_helper_cmd) - 1);
     stream_helper_cmd[sizeof(stream_helper_cmd) - 1] = '\0';
+
+    if (!stream_enabled && stream_helper_cmd[0] != '\0') {
+        stream_enabled = 1;
+        printf("[Bridge] Alert stream auto-enabled from helper command\n");
+    }
 
     if (stream_enabled && strcmp(stream_mode, STREAM_MODE_HELPER) == 0 &&
         stream_helper_cmd[0] == '\0') {
@@ -346,15 +382,20 @@ static int stream_send_alert(const struct vmi_alert *alert) {
         return -1;
 
     char reason_json[2 * VMI_ALERT_REASON_MAX + 8];
+    const char *threat_type = threat_type_from_level(alert->threat_level);
+    double confidence = threat_confidence_from_level(alert->threat_level);
     char payload[512];
     json_escape_string(alert->reason, reason_json, sizeof(reason_json));
 
     int len = snprintf(payload,
                        sizeof(payload),
                        "{\"pid\":%u,\"threat_level\":%u,"
+                       "\"threat_type\":\"%s\",\"confidence\":%.2f,"
                        "\"timestamp_ns\":%lu,\"reason\":\"%s\"}\n",
                        alert->pid,
                        alert->threat_level,
+                       threat_type,
+                       confidence,
                        alert->timestamp_ns,
                        reason_json);
     if (len <= 0 || (size_t)len >= sizeof(payload))

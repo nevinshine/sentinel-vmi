@@ -51,6 +51,7 @@ Done:
 - Implemented threat-level orchestration policy (dedup + suspicious burst escalation)
 - Added resilient downstream alert stream transport with reconnect backoff (TCP JSONL)
 - Added helper-based gRPC compatibility transport hook for sidecar forwarding
+- Added helper payload schema compatibility fields (threat_type + confidence) with unit coverage
 
 Remaining validation/work:
 - Validate helper-stream interoperability with gRPC forwarder sidecar

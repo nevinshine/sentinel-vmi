@@ -20,6 +20,11 @@ static void remove_fallback_log(void) {
     unlink(VMI_ALERT_FALLBACK_PATH);
 }
 
+static void remove_file(const char *path) {
+    if (path)
+        unlink(path);
+}
+
 static int count_alert_lines(uint32_t pid, uint32_t threat_level) {
     FILE *fp = fopen(VMI_ALERT_FALLBACK_PATH, "r");
     if (!fp)
@@ -37,6 +42,27 @@ static int count_alert_lines(uint32_t pid, uint32_t threat_level) {
 
     fclose(fp);
     return count;
+}
+
+static int file_contains_text(const char *path, const char *needle) {
+    if (!path || !needle)
+        return 0;
+
+    FILE *fp = fopen(path, "r");
+    if (!fp)
+        return 0;
+
+    char line[512];
+    int found = 0;
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        if (strstr(line, needle) != NULL) {
+            found = 1;
+            break;
+        }
+    }
+
+    fclose(fp);
+    return found;
 }
 
 // ──────────────────────────────────────────────
@@ -173,6 +199,34 @@ static void test_stream_helper_mode_graceful(void) {
     PASS();
 }
 
+static void test_stream_helper_payload_schema(void) {
+    TEST("stream_helper_payload_schema");
+
+    const char *helper_out = "/tmp/vmi_helper_stream_payload.log";
+    remove_file(helper_out);
+
+    setenv("VMI_ALERT_STREAM_ENABLE", "1", 1);
+    setenv("VMI_ALERT_STREAM_MODE", "helper", 1);
+    setenv("VMI_ALERT_GRPC_HELPER_CMD", "cat >>/tmp/vmi_helper_stream_payload.log", 1);
+
+    bridge_init();
+    bridge_signal_malicious(999, "schema_test");
+    bridge_flush_alerts();
+    bridge_teardown();
+
+    int has_type = file_contains_text(helper_out, "\"threat_type\":\"malicious\"");
+    int has_conf = file_contains_text(helper_out, "\"confidence\":0.98");
+
+    setenv("VMI_ALERT_STREAM_ENABLE", "0", 1);
+    remove_file(helper_out);
+
+    if (has_type && has_conf) {
+        PASS();
+    } else {
+        FAIL("helper payload missing threat_type or confidence");
+    }
+}
+
 // ──────────────────────────────────────────────
 // Test: Alert struct layout
 // ──────────────────────────────────────────────
@@ -206,6 +260,7 @@ int main(void) {
     test_malicious_not_duplicated_on_flush();
     test_suspicious_escalates_to_malicious();
     test_stream_helper_mode_graceful();
+    test_stream_helper_payload_schema();
 
     printf("\n[Test] ───────────────────────────────────────\n");
     printf("[Test] Results: %d passed, %d failed\n",

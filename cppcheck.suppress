@@ -1,0 +1,12 @@
+# cppcheck.suppress
+# Suppression list for cppcheck static analysis.
+# Each entry silences a specific checker or checker+file combination.
+# Format: [error-id]:[filename]:[line]  (filename and line are optional)
+
+# System headers are not available in CI; suppress missing-include noise.
+missingIncludeSystem
+
+# Cross-translation-unit unused-function detection produces false positives
+# for functions that are only called from other .c files not visible to
+# cppcheck in a single-file pass.
+unusedFunction

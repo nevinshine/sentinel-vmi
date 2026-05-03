@@ -117,6 +117,10 @@ jobs:
 
       - name: Boot test in QEMU
         run: |
+          if [ ! -e /dev/kvm ]; then
+            echo "⚠ /dev/kvm not available; skipping QEMU boot test on GitHub-hosted runners"
+            exit 0
+          fi
           echo "Creating test initramfs..."
           mkdir -p initramfs/{bin,sbin,etc,proc,sys,dev}
           

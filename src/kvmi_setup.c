@@ -950,6 +950,17 @@ struct vmi_session *kvmi_setup(const char *vm_name) {
         return NULL;
     }
 
+    if (session->vcpu_fds[0] > 0) {
+        struct kvm_sregs sregs;
+        if (ioctl(session->vcpu_fds[0], KVM_GET_SREGS, &sregs) == 0) {
+            // Clear the lower 12 bits to strip PCID and alignment flags
+            session->kernel_pgd = sregs.cr3 & 0x000FFFFFFFFFF000ULL;
+            printf("[VMI-Setup] Captured active CR3 (init_mm.pgd) = 0x%lx (raw 0x%llx)\n", session->kernel_pgd, sregs.cr3);
+        } else {
+            perror("[VMI-Setup] KVM_GET_SREGS failed");
+        }
+    }
+
     printf("[VMI-Setup] Session established successfully\n");
     printf("[VMI-Setup] KVM fd=%d VM fd=%d qemu_pid=%d vCPUs=%d memslots=%d control_fd=%d kvmi=%s\n",
            session->kvm_fd,

@@ -588,3 +588,50 @@ void npt_guard_handle_events(struct vmi_session *s) {
     // Small sleep to avoid busy-spinning
     usleep(100000);  // 100ms polling interval
 }
+
+int npt_guard_protect_dynamic(struct vmi_session *s, uint64_t gpa, uint64_t size, int critical, const char *name) {
+    if (!s || !name) return -1;
+
+    if (add_guard_region(name, gpa, size, critical) < 0) {
+        fprintf(stderr, "[NPT-Guard] Failed to add dynamic guard region %s\n", name);
+        return -1;
+    }
+
+    struct guard_region *region = &guard_regions[guard_region_count - 1];
+    if (snapshot_guard_region(s, region) < 0) {
+        fprintf(stderr, "[NPT-Guard] Failed to snapshot dynamic region %s\n", name);
+        return -1;
+    }
+
+    if (s->npt_armed) {
+        uint64_t start = region->gpa;
+        uint64_t end = start + region->size;
+        uint64_t page = start & ~(uint64_t)(VMI_PAGE_SIZE - 1);
+        while (page < end) {
+            set_page_readonly(s, page);
+            page += VMI_PAGE_SIZE;
+        }
+    }
+    return 0;
+}
+
+int npt_guard_check_bounds(uint64_t gpa, const char **region_name, int *is_critical) {
+    for (int i = 0; i < guard_region_count; i++) {
+        uint64_t start = guard_regions[i].gpa;
+        uint64_t end = start + guard_regions[i].size;
+        uint64_t page_start = start & ~(uint64_t)(VMI_PAGE_SIZE - 1);
+        uint64_t page_end = (end + VMI_PAGE_SIZE - 1) & ~(uint64_t)(VMI_PAGE_SIZE - 1);
+
+        if (gpa >= page_start && gpa < page_end) {
+            if (region_name) *region_name = guard_regions[i].name;
+            if (is_critical) *is_critical = guard_regions[i].critical;
+
+            if (gpa >= start && gpa < end) {
+                return 1; // Direct hit on map
+            } else {
+                return 2; // Collateral write on same page
+            }
+        }
+    }
+    return 0; // Unknown
+}

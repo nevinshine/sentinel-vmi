@@ -16,7 +16,8 @@ SRCS = src/main.c \
        src/task_walker.c \
        src/npt_guard.c \
        src/npf_handler.c \
-       src/bridge.c
+       src/bridge.c \
+       src/heki_server.c
 
 OBJS = $(SRCS:.c=.o)
 TARGET = sentinel-vmi

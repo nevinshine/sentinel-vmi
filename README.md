@@ -31,9 +31,9 @@ wire-speed packet drops.
 | 1 | Raw guest memory introspection | Implemented baseline (QMP handshake + live memslot discovery) |
 | 2 | task_struct parsing and process intelligence | Implemented with BTF-first fallback and anomaly detectors |
 | 3 | NPT Guard and kernel integrity enforcement | Hardened baseline implemented (multi-region integrity + revalidation) |
-| 4 | Cross-layer bridge to Hyperion/Telos | In progress (policy orchestration + resilient stream transport) |
+| 4 | Cross-layer bridge to Hyperion/Telos | Implemented (Binary IPC over Unix Socket) |
 | 5 | Advanced introspection (network/fs/module/hypervisor hardening) | Planned |
-| 6 | Telos Ring -1 integration and formal verification | Future |
+| 6 | Telos Ring -1 integration and formal verification | Implemented (Heki EPT Protection) |
 
 ## Planning Documents
 
@@ -100,6 +100,7 @@ Optional downstream stream controls:
 - VMI_ALERT_STREAM_HOST=127.0.0.1 (default for tcp mode)
 - VMI_ALERT_STREAM_PORT=8421 (default for tcp mode)
 - VMI_ALERT_GRPC_HELPER_CMD="<command>" (required for helper mode; bridge writes JSONL alerts to helper stdin)
+- VMI_ALERT_HELPER_INCLUDE_METADATA=1 adds threat_level/timestamp_ns/reason to helper payloads (default: strict schema)
 
 Helper convenience behavior:
 
@@ -108,4 +109,18 @@ Helper convenience behavior:
 gRPC compatibility note:
 
 - Use helper mode with a local sidecar command that forwards JSONL alerts to your gRPC endpoint.
-- Stream payload includes pid, threat_level, threat_type, confidence, timestamp_ns, and reason.
+- Helper mode default payload schema: pid, threat_type, confidence (strict for schema-sensitive gRPC consumers).
+- Optional metadata fields (threat_level, timestamp_ns, reason) are included only when VMI_ALERT_HELPER_INCLUDE_METADATA=1.
+
+Bundled helper sidecar:
+
+- scripts/vmi_grpc_forwarder.sh reads helper JSONL from stdin and forwards each payload with grpcurl.
+
+Example:
+
+```bash
+export VMI_ALERT_STREAM_MODE=helper
+export VMI_ALERT_GRPC_HELPER_CMD="./scripts/vmi_grpc_forwarder.sh"
+export VMI_GRPC_ENDPOINT="localhost:8421"
+export VMI_GRPC_METHOD="telos.vmi.AlertService/PushAlert"
+```

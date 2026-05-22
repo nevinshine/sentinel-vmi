@@ -93,6 +93,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Initialize Heki Bridge server
+    const char *heki_socket = getenv("TELOS_HEKI_VMI_SOCKET");
+    if (heki_socket) {
+        if (heki_server_init(session, heki_socket) < 0) {
+            fprintf(stderr, "[VMI] WARN: Failed to initialize HEKI server on %s\n", heki_socket);
+        }
+    }
+
     // ────────────────────────────────────────
     // Main event loop
     // ────────────────────────────────────────
@@ -108,6 +116,9 @@ int main(int argc, char *argv[]) {
 
         // Handle NPF events from NPT Guard
         npt_guard_handle_events(session);
+
+        // Handle Heki dynamic registrations
+        heki_server_poll();
 
         // Periodic privilege escalation scan
         task_walker_detect_privilege_escalation(session);

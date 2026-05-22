@@ -88,25 +88,39 @@ static enum fault_classification classify_fault(struct vmi_session *s,
                                                 uint64_t gpa,
                                                 int write_access,
                                                 const char **region_out,
-                                                int *critical_out) {
+                                                int *critical_out,
+                                                int *is_collateral) {
     if (!s || !write_access) {
         if (region_out) *region_out = "none";
         if (critical_out) *critical_out = 0;
+        if (is_collateral) *is_collateral = 0;
         return FAULT_IGNORE;
     }
 
     const char *region = "protected_page";
     int critical = 0;
+    int collateral = 0;
 
-    if (s->syscall_table_gpa != 0 &&
-        gpa >= s->syscall_table_gpa &&
-        gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
-        region = "sys_call_table";
-        critical = 1;
+    int bound_res = npt_guard_check_bounds(gpa, &region, &critical);
+    if (bound_res == 2) {
+        collateral = 1;
+    } else if (bound_res == 0) {
+        // Fallback for sys_call_table if not in dynamic regions
+        if (s->syscall_table_gpa != 0 &&
+            gpa >= s->syscall_table_gpa &&
+            gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
+            region = "sys_call_table";
+            critical = 1;
+        }
     }
 
     if (region_out) *region_out = region;
     if (critical_out) *critical_out = critical;
+    if (is_collateral) *is_collateral = collateral;
+
+    if (collateral) {
+        return FAULT_LEGITIMATE; // Handled via MTF
+    }
 
     if (is_legitimate_fault(s, gpa, region))
         return FAULT_LEGITIMATE;
@@ -172,11 +186,24 @@ void npf_handler_process(struct vmi_session *s,
 
     const char *region_name = "protected_page";
     int critical = 0;
+    int is_collateral = 0;
     enum fault_classification classification =
-        classify_fault(s, gpa, write_access, &region_name, &critical);
+        classify_fault(s, gpa, write_access, &region_name, &critical, &is_collateral);
 
     if (classification == FAULT_IGNORE)
         return;
+
+    if (is_collateral) {
+        printf("[NPF-Handler] Collateral write detected at GPA 0x%lx (Region: %s). Activating MTF single-stepping.\n", gpa, region_name);
+        // MTF Single-Stepping Flow
+        // 1. Unprotect the page (set RW)
+        // 2. Enable MTF in vCPU execution controls
+        // 3. VMRESUME (executes exactly one instruction)
+        // 4. Trap #DB exception
+        // 5. Restore page to RO and disable MTF
+        printf("[NPF-Handler] (Simulated) Unprotecting page, arming MTF, stepping, restoring RO.\n");
+        return;
+    }
 
     printf("[NPF-Handler] ══════════════════════════════════════\n");
     printf("[NPF-Handler] #NPF TRAPPED — WRITE TO PROTECTED PAGE\n");

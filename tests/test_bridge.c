@@ -214,16 +214,43 @@ static void test_stream_helper_payload_schema(void) {
     bridge_flush_alerts();
     bridge_teardown();
 
+    int has_pid = file_contains_text(helper_out, "\"pid\":999");
     int has_type = file_contains_text(helper_out, "\"threat_type\":\"malicious\"");
     int has_conf = file_contains_text(helper_out, "\"confidence\":0.98");
+    int has_extra = file_contains_text(helper_out, "\"threat_level\"");
 
     setenv("VMI_ALERT_STREAM_ENABLE", "0", 1);
     remove_file(helper_out);
 
-    if (has_type && has_conf) {
+    if (has_pid && has_type && has_conf && !has_extra) {
         PASS();
     } else {
-        FAIL("helper payload missing threat_type or confidence");
+        FAIL("helper payload schema mismatch");
+    }
+}
+
+static void test_stream_helper_auto_enable(void) {
+    TEST("stream_helper_auto_enable");
+
+    const char *helper_out = "/tmp/vmi_helper_auto_enable.log";
+    remove_file(helper_out);
+
+    setenv("VMI_ALERT_STREAM_ENABLE", "0", 1);
+    setenv("VMI_ALERT_STREAM_MODE", "helper", 1);
+    setenv("VMI_ALERT_GRPC_HELPER_CMD", "cat >>/tmp/vmi_helper_auto_enable.log", 1);
+
+    bridge_init();
+    bridge_signal_malicious(1001, "auto_enable_test");
+    bridge_flush_alerts();
+    bridge_teardown();
+
+    int emitted = file_contains_text(helper_out, "\"pid\":1001");
+    remove_file(helper_out);
+
+    if (emitted) {
+        PASS();
+    } else {
+        FAIL("helper auto-enable did not emit stream payload");
     }
 }
 
@@ -261,6 +288,7 @@ int main(void) {
     test_suspicious_escalates_to_malicious();
     test_stream_helper_mode_graceful();
     test_stream_helper_payload_schema();
+    test_stream_helper_auto_enable();
 
     printf("\n[Test] ───────────────────────────────────────\n");
     printf("[Test] Results: %d passed, %d failed\n",

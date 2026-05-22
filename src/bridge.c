@@ -69,6 +69,7 @@ static uint16_t stream_port = STREAM_DEFAULT_PORT;
 static char stream_mode[16];
 static char stream_helper_cmd[256];
 static FILE *stream_helper_fp = NULL;
+static int stream_helper_include_metadata = 0;
 static uint64_t stream_next_reconnect_ns = 0;
 static uint64_t stream_reconnect_backoff_ns = STREAM_RECONNECT_BASE_NS;
 
@@ -195,6 +196,8 @@ static void parse_stream_config(void) {
         mode = STREAM_MODE_TCP;
     strncpy(stream_mode, mode, sizeof(stream_mode) - 1);
     stream_mode[sizeof(stream_mode) - 1] = '\0';
+    stream_helper_include_metadata =
+        env_enabled("VMI_ALERT_HELPER_INCLUDE_METADATA", 0);
 
     if (strcmp(stream_mode, STREAM_MODE_TCP) != 0 &&
         strcmp(stream_mode, STREAM_MODE_HELPER) != 0) {
@@ -387,7 +390,19 @@ static int stream_send_alert(const struct vmi_alert *alert) {
     char payload[512];
     json_escape_string(alert->reason, reason_json, sizeof(reason_json));
 
-    int len = snprintf(payload,
+    int helper_mode = (strcmp(stream_mode, STREAM_MODE_HELPER) == 0);
+    int len = 0;
+    if (helper_mode && !stream_helper_include_metadata) {
+        // Strict helper schema for gRPC sidecars that reject unknown fields.
+        len = snprintf(payload,
+                       sizeof(payload),
+                       "{\"pid\":%u,\"threat_type\":\"%s\","
+                       "\"confidence\":%.2f}\n",
+                       alert->pid,
+                       threat_type,
+                       confidence);
+    } else {
+        len = snprintf(payload,
                        sizeof(payload),
                        "{\"pid\":%u,\"threat_level\":%u,"
                        "\"threat_type\":\"%s\",\"confidence\":%.2f,"
@@ -398,10 +413,11 @@ static int stream_send_alert(const struct vmi_alert *alert) {
                        confidence,
                        alert->timestamp_ns,
                        reason_json);
+    }
     if (len <= 0 || (size_t)len >= sizeof(payload))
         return -1;
 
-    if (strcmp(stream_mode, STREAM_MODE_HELPER) == 0) {
+    if (helper_mode) {
         if (!stream_helper_fp)
             return -1;
 

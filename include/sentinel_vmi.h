@@ -136,6 +136,12 @@ int  npf_handler_report_integrity_violation(struct vmi_session *s,
                                             int critical);
 
 // ──────────────────────────────────────────────
+// Phase 6 — heki_server.c
+// ──────────────────────────────────────────────
+int  heki_server_init(struct vmi_session *session, const char *socket_path);
+void heki_server_poll(void);
+
+// ──────────────────────────────────────────────
 // Phase 4 — bridge.c
 // ──────────────────────────────────────────────
 int  bridge_init(void);
@@ -145,3 +151,5 @@ void bridge_signal_malicious(uint32_t pid,
 void bridge_signal_suspicious(uint32_t pid,
                               const char *reason);
 void bridge_flush_alerts(void);
+int npt_guard_protect_dynamic(struct vmi_session *s, uint64_t gpa, uint64_t size, int critical, const char *name);
+int npt_guard_check_bounds(uint64_t gpa, const char **region_name, int *is_critical);

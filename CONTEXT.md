@@ -143,6 +143,7 @@ Telos Runtime expects:
   gRPC endpoint: localhost:8421/vmi/alert
   Payload: {pid: u32, threat_type: string, confidence: f32}
   Bridge helper stream emits JSONL with these fields plus threat_level, timestamp_ns, and reason.
+  Default helper mode emits strict schema (pid, threat_type, confidence); metadata fields are opt-in.
 
 Sentinel-CC expects:
   Nothing directly — VMI detection triggers runtime response

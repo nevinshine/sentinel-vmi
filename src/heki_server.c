@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #define HEKI_MAGIC 0x48454B49
 
@@ -41,7 +42,7 @@ int heki_server_init(struct vmi_session *session, const char *socket_path) {
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path) - 1);
 
-    unlink(socket_path);
+    (void)unlink(socket_path);
 
     if (bind(heki_listen_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("[HEKI] bind");
@@ -65,9 +66,9 @@ static void handle_heki_client(int client_fd) {
     
     uint8_t response = 0;
 
-    if (n == sizeof(reg) && reg.magic == HEKI_MAGIC) {
+    if (n == (ssize_t)sizeof(reg) && reg.magic == HEKI_MAGIC) {
         printf("[HEKI] Received registration for map: %s\n", reg.name);
-        printf("[HEKI]  - GVA: 0x%lx\n", reg.gva);
+        printf("[HEKI]  - GVA: 0x%" PRIx64 "\n", reg.gva);
         printf("[HEKI]  - Size: %u\n", reg.size);
         printf("[HEKI]  - Critical: %d\n", reg.is_critical);
 
@@ -75,9 +76,9 @@ static void handle_heki_client(int client_fd) {
         if (heki_session->kernel_pgd == 0) {
             fprintf(stderr, "[HEKI] Error: kernel_pgd not set yet\n");
         } else if (vmi_gva_to_gpa(heki_session, heki_session->kernel_pgd, reg.gva, &gpa) < 0) {
-            fprintf(stderr, "[HEKI] Error: Failed to translate GVA 0x%lx to GPA\n", reg.gva);
+            fprintf(stderr, "[HEKI] Error: Failed to translate GVA 0x%" PRIx64 " to GPA\n", reg.gva);
         } else {
-            printf("[HEKI] Translated GVA 0x%lx -> GPA 0x%lx\n", reg.gva, gpa);
+            printf("[HEKI] Translated GVA 0x%" PRIx64 " -> GPA 0x%" PRIx64 "\n", reg.gva, gpa);
             
             // Protect the page(s)
             if (npt_guard_protect_dynamic(heki_session, gpa, reg.size, reg.is_critical, reg.name) == 0) {
@@ -88,7 +89,9 @@ static void handle_heki_client(int client_fd) {
         fprintf(stderr, "[HEKI] Invalid registration payload (read %zd bytes, magic 0x%x)\n", n, reg.magic);
     }
 
-    write(client_fd, &response, 1);
+    if (write(client_fd, &response, 1) < 0) {
+        perror("[HEKI] write response failed");
+    }
     close(client_fd);
 }
 

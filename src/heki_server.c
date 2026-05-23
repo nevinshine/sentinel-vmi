@@ -75,12 +75,7 @@ static void handle_heki_client(int client_fd) {
 
         uint64_t gpa = 0;
         if (heki_session->kernel_pgd == 0) {
-            fprintf(stderr, "[HEKI] Error: kernel_pgd not set yet (Mocking success for IPC testing)\n");
-            if (heki_active_nonce == 0) {
-                heki_active_nonce = 3039; // Fixed nonce for mocking
-            }
-            response = heki_active_nonce;
-            printf("[HEKI] ✓ Protected %u pages for map %s (Nonce: %u)\n", (reg.size + 0xFFF) / 0x1000, reg.name, response);
+            fprintf(stderr, "[HEKI] Error: kernel_pgd not set yet\n");
         } else if (vmi_gva_to_gpa(heki_session, heki_session->kernel_pgd, reg.gva, &gpa) < 0) {
             fprintf(stderr, "[HEKI] Error: Failed to translate GVA 0x%" PRIx64 " to GPA\n", reg.gva);
         } else {

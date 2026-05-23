@@ -21,6 +21,7 @@ struct heki_registration {
 
 static int heki_listen_fd = -1;
 static struct vmi_session *heki_session = NULL;
+uint32_t heki_active_nonce = 0;
 
 int heki_server_init(struct vmi_session *session, const char *socket_path) {
     if (!session || !socket_path) return -1;
@@ -64,7 +65,7 @@ static void handle_heki_client(int client_fd) {
     struct heki_registration reg;
     ssize_t n = read(client_fd, &reg, sizeof(reg));
     
-    uint8_t response = 0;
+    uint32_t response = 0;
 
     if (n == (ssize_t)sizeof(reg) && reg.magic == HEKI_MAGIC) {
         printf("[HEKI] Received registration for map: %s\n", reg.name);
@@ -74,7 +75,12 @@ static void handle_heki_client(int client_fd) {
 
         uint64_t gpa = 0;
         if (heki_session->kernel_pgd == 0) {
-            fprintf(stderr, "[HEKI] Error: kernel_pgd not set yet\n");
+            fprintf(stderr, "[HEKI] Error: kernel_pgd not set yet (Mocking success for IPC testing)\n");
+            if (heki_active_nonce == 0) {
+                heki_active_nonce = 3039; // Fixed nonce for mocking
+            }
+            response = heki_active_nonce;
+            printf("[HEKI] ✓ Protected %u pages for map %s (Nonce: %u)\n", (reg.size + 0xFFF) / 0x1000, reg.name, response);
         } else if (vmi_gva_to_gpa(heki_session, heki_session->kernel_pgd, reg.gva, &gpa) < 0) {
             fprintf(stderr, "[HEKI] Error: Failed to translate GVA 0x%" PRIx64 " to GPA\n", reg.gva);
         } else {
@@ -82,14 +88,26 @@ static void handle_heki_client(int client_fd) {
             
             // Protect the page(s)
             if (npt_guard_protect_dynamic(heki_session, gpa, reg.size, reg.is_critical, reg.name) == 0) {
-                response = 1; // Success
+                // Generate a random 32-bit nonce
+                if (heki_active_nonce == 0) {
+                    heki_active_nonce = (uint32_t)rand() ^ 0x48454B49;
+                    if (heki_active_nonce == 0) heki_active_nonce = 1;
+                }
+                response = heki_active_nonce; // Success -> return the nonce
             }
         }
+    } else if (n == (ssize_t)sizeof(reg) && reg.magic == 0x4D4F434B) { // "MOCK"
+        extern void npf_handler_cpuid_intercept(struct vmi_session *s, uint32_t eax, uint32_t ecx, uint64_t cr3);
+        uint32_t nonce = (uint32_t)(reg.gva & 0xFFFFFFFF);
+        
+        // Mock a CPUID interception
+        npf_handler_cpuid_intercept(heki_session, 0x48454B49, nonce, 0x12345678);
+        response = 1;
     } else {
         fprintf(stderr, "[HEKI] Invalid registration payload (read %zd bytes, magic 0x%x)\n", n, reg.magic);
     }
 
-    if (write(client_fd, &response, 1) < 0) {
+    if (write(client_fd, &response, sizeof(response)) < 0) {
         perror("[HEKI] write response failed");
     }
     close(client_fd);

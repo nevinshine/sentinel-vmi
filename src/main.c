@@ -109,6 +109,10 @@ int main(int argc, char *argv[]) {
     printf("[VMI] Press Ctrl+C to stop.\n");
     printf("[VMI] ═══════════════════════════════════════\n\n");
 
+    const char *interval_env = getenv("VMI_SCAN_INTERVAL_MS");
+    int scan_interval_ms = interval_env ? atoi(interval_env) : 250;
+    if (scan_interval_ms <= 0) scan_interval_ms = 250;
+
     while (running) {
         if (kvmi_session_heartbeat(session) < 0) {
             fprintf(stderr, "[VMI] WARN: KVMI heartbeat failed\n");
@@ -128,6 +132,8 @@ int main(int argc, char *argv[]) {
 
         // Flush queued alerts
         bridge_flush_alerts();
+
+        usleep(scan_interval_ms * 1000);
     }
 
     // ────────────────────────────────────────

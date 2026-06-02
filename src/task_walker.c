@@ -1,4 +1,4 @@
-// src/task_walker.c — Phase 2: Semantic Gap Bridging
+// src/task_walker.c — Phase 2: Memory Layout Parsing
 //
 // Parses raw memory into meaningful kernel data structures.
 // Walks the task_struct linked list starting from init_task,

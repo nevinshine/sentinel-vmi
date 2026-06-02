@@ -31,7 +31,7 @@ and acts from outside the trust boundary.
 - CR3-driven translation from guest context
 - GPA to host mapping via KVM/QEMU memory metadata
 
-## Phase 2: Semantic Gap Bridging
+## Phase 2: Memory Layout Parsing
 ### Symbol and Offset Resolution
 - BTF-first offset discovery
 - Kernel version detection from guest state

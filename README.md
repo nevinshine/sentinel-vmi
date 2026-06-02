@@ -166,7 +166,7 @@ Sentinel VMI implements an explicit manual address translation fallback:
 | Feature | Description |
 |:--------|:-----------|
 | Raw Memory Introspection | Read guest physical memory from Ring -1 without trusting the guest OS |
-| Semantic Gap Bridging | Parse meaningful kernel data structures from raw bytes via BTF-first offsets |
+| Memory Layout Parsing | Parse meaningful kernel data structures from raw bytes via BTF-first offsets |
 | NPT Guard | Hardware write-protection of sys_call_table via Nested Page Tables |
 | #NPF Trap Handler | Real-time detection of rootkit modifications through hardware fault analysis |
 | Multi-Region Integrity | Periodic hash revalidation of kernel_text, IDT, GDT, and LSTAR |
@@ -295,7 +295,7 @@ sentinel-vmi/
 </details>
 
 <details>
-<summary><b>Phase 2: Semantic Gap Bridging</b> — Parse kernel structures from raw bytes</summary>
+<summary><b>Phase 2: Memory Layout Parsing</b> — Parse kernel structures from raw bytes</summary>
 
 - BTF-first offset loader with kernel-profile fallback
 - Process list walker (`init_task` -> all processes via linked list)
@@ -335,7 +335,7 @@ sentinel-vmi/
 | Execution Layer | Sentinel Component | Primary Technology & Enforcement | Strategic Objective |
 |:------|:------|:------|:------|
 | **Ring -1 (Hypervisor)** | **`sentinel-vmi`** | AMD-V / NPT Guard / ARMv8 EL2 | Out-of-band Hypervisor Introspection, memory monitoring |
-| Ring 0 (Compile) | `sentinel-cc` | LLVM / Policy-Carrying Code | Compile-time intent validation, Deep CFI, ASLR-aware enforcement |
+| Ring 0 (Compile) | `sentinel-cc` | LLVM / Policy-Carrying Code | Compile-time intent validation, Call-Stack CFI, ASLR-aware enforcement |
 | Ring 0 (Runtime) | `telos-runtime` | eBPF-LSM | Intent correlation, Information Flow Control (IFC), and Taint Tracking |
 | Ring 0 (Runtime) | Sentinel RT | Seccomp / eBPF / io_uring | Host Intrusion Detection System (HIDS), Citadel recursive tracking |
 | Wire / Physical NIC | `hyperion-xdp` | XDP / eBPF | Wire-speed network drop and proxy enforcement |

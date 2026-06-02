@@ -24,7 +24,7 @@ static void print_banner(void) {
     printf("  ║    Hypervisor Introspection Engine        ║\n");
     printf("  ╠═══════════════════════════════════════════╣\n");
     printf("  ║  Phase 1: Raw Memory Introspection        ║\n");
-    printf("  ║  Phase 2: Semantic Gap Bridging           ║\n");
+    printf("  ║  Phase 2: Memory Layout Parsing           ║\n");
     printf("  ║  Phase 3: NPT Guard (sys_call_table)     ║\n");
     printf("  ║  Phase 4: Cross-Layer Bridge              ║\n");
     printf("  ╚═══════════════════════════════════════════╝\n");

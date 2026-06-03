@@ -76,4 +76,12 @@ bool elf64_find_section(const uint8_t *blob, size_t size, const char *section_na
  */
 bool telos_policy_extract(const uint8_t *blob, size_t size, TelosPolicyEntry *out_policy);
 
+/**
+ * Extracts ALL TelosPolicyEntry structs from the `.telos_policy` section.
+ * Returns the number of policies extracted (0 on failure).
+ * Writes up to max_count entries into out_policies[].
+ */
+uint32_t telos_policy_extract_all(const uint8_t *blob, size_t size,
+                                   TelosPolicyEntry *out_policies, uint32_t max_count);
+
 #endif // ELF_PARSER_H

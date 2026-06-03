@@ -144,3 +144,31 @@ bool telos_policy_extract(const uint8_t *blob, size_t size, TelosPolicyEntry *ou
 
     return true;
 }
+
+uint32_t telos_policy_extract_all(const uint8_t *blob, size_t size,
+                                   TelosPolicyEntry *out_policies, uint32_t max_count) {
+    uint64_t sec_offset;
+    uint64_t sec_size;
+
+    if (!elf64_find_section(blob, size, ".telos_policy", &sec_offset, &sec_size)) {
+        return 0;
+    }
+
+    uint32_t entry_count = (uint32_t)(sec_size / sizeof(TelosPolicyEntry));
+    if (entry_count > max_count) {
+        entry_count = max_count;
+    }
+    if (entry_count == 0) {
+        return 0;
+    }
+
+    for (uint32_t i = 0; i < entry_count; i++) {
+        const uint8_t *src = blob + sec_offset + (i * sizeof(TelosPolicyEntry));
+        uint8_t *dst = (uint8_t *)&out_policies[i];
+        for (size_t b = 0; b < sizeof(TelosPolicyEntry); b++) {
+            dst[b] = src[b];
+        }
+    }
+
+    return entry_count;
+}

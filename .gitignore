@@ -5,3 +5,5 @@
 /test_task_walker
 /test_npt
 /test_bridge
+/test_snapshot_bin
+tests/fixtures/

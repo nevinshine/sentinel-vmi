@@ -1,7 +1,7 @@
 # Sentinel VMI — Full Engineering Context
 
 ## What This Is
-Sentinel VMI is the Ring -1 hypervisor introspection layer of the 
+Sentinel VMI is the hypervisor-assisted introspection layer of the 
 unified Sentinel Stack. It operates below the Linux kernel using 
 AMD-V hardware virtualization extensions. It assumes the guest OS 
 is already compromised and enforces security from outside the 
@@ -9,7 +9,7 @@ trust boundary entirely.
 
 ## Position in the Unified Stack
 ```
-Ring -1  → Sentinel VMI        (THIS PROJECT)
+Hypervisor → Sentinel VMI        (THIS PROJECT)
 Ring 0   → Sentinel-CC         (compiler policy enforcement)
 Ring 0   → Telos Runtime       (intent-based eBPF/LSM)
 Ring 0   → Sentinel Runtime    (HIDS/seccomp)
@@ -20,7 +20,7 @@ L7       → Pipelock            (MCP semantic detection)
 ## Core Threat Model
 - Adversary has Ring 0 access (kernel is compromised)
 - Traditional eBPF/LSM tools are untrustworthy at this point
-- VMI operates from Ring -1 — below the compromised OS
+- VMI operates from the hypervisor — below the compromised OS
 - Hardware enforces what software cannot
 
 ## Hardware Requirements
@@ -32,7 +32,7 @@ L7       → Pipelock            (MCP semantic detection)
 ## The Four Phases
 
 ### Phase 1 — Raw Memory Introspection
-Goal: Read guest physical memory from Ring -1 without 
+Goal: Read guest physical memory via KVM mediation without 
 trusting the guest OS at all.
 
 Components:
@@ -85,7 +85,7 @@ What it proves:
 - No kernel-level bypass exists
 
 ### Phase 4 — Cross-Layer Bridge
-Goal: Connect Ring -1 detection to the rest of the Sentinel Stack.
+Goal: Connect hypervisor-level detection to the rest of the Sentinel Stack.
 
 Components:
 - Malicious PID detection (from Phase 2 + 3 combined)

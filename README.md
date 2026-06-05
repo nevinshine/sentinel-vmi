@@ -1,16 +1,27 @@
 # Sentinel VMI
 
-### Ring -1 Hypervisor Introspection Engine
+### KVM-backed VMI Mediation Engine
 
 <p align="center">
   <img src="https://img.shields.io/badge/Hardware-AMD--V%20%2F%20NPT-orange?style=for-the-badge&logo=amd" />
-  <img src="https://img.shields.io/badge/Layer-Ring%20--1%20(EL2)-blueviolet?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Layer-Hypervisor%20(EL2)-blueviolet?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Introspection-kvmi--v7-00b894?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Version-1.0-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/License-GPL-green?style=for-the-badge" />
 </p>
 
-Sentinel VMI is the Ring -1 hypervisor introspection layer of the unified Sentinel Stack. It operates below the Linux kernel using AMD-V hardware virtualization extensions and ARMv8 EL2 Virtualization Extensions. It assumes the guest OS is already compromised and enforces security from outside the trust boundary entirely.
+> **Status:** Experimental prototype (alpha)
+
+## Threat Model
+
+Sentinel VMI protects against fully compromised Ring 0 (kernel) operating systems, specifically targeting advanced rootkits and malicious firmware behavior.
+**In Scope**: Kernel `sys_call_table` modifications, hidden processes, and unauthorized direct memory access (DMA).
+**Assumptions**: The Hypervisor is trusted, isolated from the guest, and possesses an uncorrupted view of the hardware state. Nested Virtualization capabilities in the CPU are functional and secure.
+**Out of Scope / Limitations**: Hypervisor breakout vulnerabilities (VM escape) and microarchitectural side-channels (e.g., Spectre, Meltdown) are out of scope.
+
+---
+
+Sentinel VMI is the hypervisor-assisted introspection layer of the unified Sentinel Stack. It operates below the Linux kernel using AMD-V hardware virtualization extensions and ARMv8 EL2 Virtualization Extensions. It assumes the guest OS is already compromised and enforces security from outside the trust boundary entirely.
 
 ---
 
@@ -18,11 +29,11 @@ Sentinel VMI is the Ring -1 hypervisor introspection layer of the unified Sentin
 
 Imagine the operating system kernel (Ring 0) is a vault inside a high-security building. If a rootkit gets inside the vault and locks the doors, traditional security cameras inside the vault can be turned off or blinded by the attacker.
 
-**Sentinel VMI puts the cameras inside the concrete walls and foundation of the building itself (Ring -1 / The Hypervisor).** Even if a rootkit takes total control of the operating system kernel, it is physically impossible for the rootkit to detect or disable Sentinel VMI, because Sentinel VMI controls the very hardware the kernel is running on.
+**Sentinel VMI puts the cameras inside the concrete walls and foundation of the building itself (The Hypervisor).** Even if a rootkit takes total control of the operating system kernel, it is physically impossible for the rootkit to detect or disable Sentinel VMI, because Sentinel VMI controls the very hardware the kernel is running on.
 
 - The hypervisor marks the kernel's `sys_call_table` as **read-only at the hardware level** (Nested Page Tables)
 - If a rootkit attempts to overwrite it, the CPU triggers a **hardware fault (#NPF)** that Sentinel VMI intercepts
-- The rootkit's PID is identified and pushed to **Hyperion XDP** for wire-speed network isolation
+- The rootkit's PID is identified and pushed to **Hyperion XDP** for low-latency network isolation
 - The compromised process is flagged in **Telos Runtime** to trigger an immediate **Network Slam**
 
 > [!IMPORTANT]
@@ -52,7 +63,7 @@ graph TD
         K -->|task_struct walk| TASKS[("Process List")]
     end
 
-    subgraph Ring_Minus1 ["Ring -1 (Hypervisor - TRUSTED)"]
+    subgraph Ring_Minus1 ["Hypervisor (TRUSTED)"]
         SCT -.->|NPT Write Fault| NPF["#NPF Trap Handler"]
         NPF --> ANALYSIS["Fault Analysis Engine"]
         ANALYSIS -->|Legitimate| EMULATE["Emulate & Resume"]
@@ -101,7 +112,7 @@ Sentinel VMI is engineered in four progressive phases, each building on the prev
 **Phase 4: Cross-Layer Bridge**
 - Malicious PID detection from Phase 2 + Phase 3 combined
 - Pinned eBPF map `vmi_alert_map` for cross-layer signal propagation (PID to threat_level)
-- Signal to Hyperion XDP for wire-speed drops on malicious PIDs
+- Signal to Hyperion XDP for low-latency drops on malicious PIDs
 - Signal to Telos Runtime for taint elevation to `TAINT_CRITICAL`
 - Producer orchestration policy with dedup and suspicious burst escalation
 
@@ -165,7 +176,7 @@ Sentinel VMI implements an explicit manual address translation fallback:
 
 | Feature | Description |
 |:--------|:-----------|
-| Raw Memory Introspection | Read guest physical memory from Ring -1 without trusting the guest OS |
+| Raw Memory Introspection | Read guest physical memory via KVM mediation without trusting the guest OS |
 | Memory Layout Parsing | Parse meaningful kernel data structures from raw bytes via BTF-first offsets |
 | NPT Guard | Hardware write-protection of sys_call_table via Nested Page Tables |
 | #NPF Trap Handler | Real-time detection of rootkit modifications through hardware fault analysis |
@@ -227,7 +238,7 @@ make test
 ### Running
 
 > [!CAUTION]
-> ALL VMI kernel experiments must run inside a nested KVM Virtual Machine. Execution on bare-metal host operating systems is strictly prohibited during development to prevent catastrophic host panics. The feedback loop for errors at Ring -1 is a kernel panic and hard reboot with no error messages and no debugger.
+> ALL VMI kernel experiments must run inside a nested KVM Virtual Machine. Execution on bare-metal host operating systems is strictly prohibited during development to prevent catastrophic host panics. The feedback loop for errors at the hypervisor level is a kernel panic and hard reboot with no error messages and no debugger.
 
 ```bash
 # Set up the nested KVM VM
@@ -285,7 +296,7 @@ sentinel-vmi/
 ## Engineering Phases
 
 <details>
-<summary><b>Phase 1: Raw Memory Introspection</b> — Read guest memory from Ring -1</summary>
+<summary><b>Phase 1: Raw Memory Introspection</b> — Read guest memory via KVM</summary>
 
 - KVM file descriptor management and kvmi API setup
 - Raw guest physical memory dump via `kvmi_read_physical()`
@@ -317,14 +328,51 @@ sentinel-vmi/
 </details>
 
 <details>
-<summary><b>Phase 4: Cross-Layer Bridge</b> — Connect Ring -1 to the Sentinel Stack</summary>
+<summary><b>Phase 4: Cross-Layer Bridge</b> — Connect VMI to the Sentinel Stack</summary>
 
 - Malicious PID detection from Phase 2 + Phase 3
 - Pinned `vmi_alert_map` eBPF map for cross-layer propagation
-- Signal to Hyperion XDP for wire-speed drops
+- Signal to Hyperion XDP for low-latency drops
 - Signal to Telos Runtime for taint elevation
 - Producer orchestration with dedup and burst escalation
 - Resilient TCP transport with reconnect backoff
+
+</details>
+<details>
+<summary><b>Phase 15: Execution Authority Attribution</b> — Causal mapping of semantic lineage</summary>
+
+- `struct execution_authority` introduced to bind hardware isolation directly to semantic continuity.
+- Maps capability evolution (`CAP_NAMESPACE_TRANSITION`, `CAP_PTRACE_FOREIGN`) natively.
+- Evaluates temporal capability drift and topology anomalies.
+
+</details>
+
+<details>
+<summary><b>Phase 16: Distributed Semantic Coherence</b> — Global field thermodynamics</summary>
+
+- Sentinel transitions from actor-local introspection to a system-wide semantic governance model.
+- Introduces `struct semantic_field` tracking capability pressure, authority entropy, and centralization.
+- Thermodynamic variables (`semantic_inertia`, `semantic_temperature`) decay mathematically per `semantic_epoch`.
+
+</details>
+
+<details>
+<summary><b>Phase 17: Semantic Conservation & Field Closure</b> — Enforcing mathematical closure laws</summary>
+
+- Applies formal execution physics equations to the VM state.
+- Computes `conservation_delta`, proving mathematically whether `authority_mass` emerged legally.
+- Implements `authority_curvature` across topological execution edges.
+- Enforces strict execution closure states: `FIELD_COHERENT` -> `FIELD_COLLAPSING` -> `FIELD_IRRECOVERABLE`.
+
+</details>
+
+<details>
+<summary><b>Phase 18: Predictive Semantic Collapse</b> — Counterfactual topology projections</summary>
+
+- Sentinel mathematically estimates trajectory stability (`struct semantic_trajectory`).
+- Calculates `trajectory_curvature` as the 2nd derivative of divergence `d²(divergence)/d(epoch²)`.
+- Identifies `escape_velocity` natively from execution geometry.
+- Tracks **Observer Effect** dominance: mathematically guarantees Sentinel's own interventions (`#PF` traps, quarantines) do not artificially collapse the execution topology.
 
 </details>
 
@@ -334,15 +382,25 @@ sentinel-vmi/
 
 | Execution Layer | Sentinel Component | Primary Technology & Enforcement | Strategic Objective |
 |:------|:------|:------|:------|
-| **Ring -1 (Hypervisor)** | **`sentinel-vmi`** | AMD-V / NPT Guard / ARMv8 EL2 | Out-of-band Hypervisor Introspection, memory monitoring |
+| **Hypervisor (KVM)** | **`sentinel-vmi`** | AMD-V / NPT Guard / ARMv8 EL2 | Out-of-band Hypervisor Introspection, memory monitoring |
 | Ring 0 (Compile) | `sentinel-cc` | LLVM / Policy-Carrying Code | Compile-time intent validation, Call-Stack CFI, ASLR-aware enforcement |
 | Ring 0 (Runtime) | `telos-runtime` | eBPF-LSM | Intent correlation, Information Flow Control (IFC), and Taint Tracking |
 | Ring 0 (Runtime) | Sentinel RT | Seccomp / eBPF / io_uring | Host Intrusion Detection System (HIDS), Citadel recursive tracking |
-| Wire / Physical NIC | `hyperion-xdp` | XDP / eBPF | Wire-speed network drop and proxy enforcement |
+| Wire / Physical NIC | `hyperion-xdp` | XDP / eBPF | Low-latency network drop and proxy enforcement |
 
 ---
 
-## Development
+## Building & Development
+
+### Prerequisites
+
+- Linux Kernel >= 5.15 (with `CONFIG_KVM` enabled)
+- `gcc` / `clang`
+- `make`
+- `libelf-dev`
+- Optional: `libbpf-dev` (for cross-layer eBPF signaling)
+
+### Build Commands
 
 ```bash
 make all            # Full build

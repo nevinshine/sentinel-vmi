@@ -26,106 +26,102 @@
 // We maintain a whitelist.
 // ──────────────────────────────────────────────
 
-static const char *legitimate_writers[] = {
-    "ftrace",
-    "livepatch",
-    "kprobes",
-    NULL
-};
+static const char *legitimate_writers[] = {"ftrace", "livepatch", "kprobes",
+                                           NULL};
 
 enum fault_classification {
-    FAULT_IGNORE = 0,
-    FAULT_LEGITIMATE = 1,
-    FAULT_SUSPICIOUS = 2,
-    FAULT_MALICIOUS = 3,
+  FAULT_IGNORE = 0,
+  FAULT_LEGITIMATE = 1,
+  FAULT_SUSPICIOUS = 2,
+  FAULT_MALICIOUS = 3,
 };
 
 static const char *classification_to_string(enum fault_classification c) {
-    switch (c) {
-    case FAULT_LEGITIMATE:
-        return "LEGITIMATE";
-    case FAULT_SUSPICIOUS:
-        return "SUSPICIOUS";
-    case FAULT_MALICIOUS:
-        return "MALICIOUS";
-    default:
-        return "IGNORED";
-    }
+  switch (c) {
+  case FAULT_LEGITIMATE:
+    return "LEGITIMATE";
+  case FAULT_SUSPICIOUS:
+    return "SUSPICIOUS";
+  case FAULT_MALICIOUS:
+    return "MALICIOUS";
+  default:
+    return "IGNORED";
+  }
 }
 
 // ──────────────────────────────────────────────
 // Internal: Check if fault is from a legitimate source
 // ──────────────────────────────────────────────
 
-static int is_legitimate_fault(struct vmi_session *s,
-                               uint64_t fault_gpa,
+static int is_legitimate_fault(struct vmi_session *s, uint64_t fault_gpa,
                                const char *region_name) {
-    (void)s;
-    (void)fault_gpa;
+  (void)s;
+  (void)fault_gpa;
 
-    // In a full implementation:
-    // 1. Read the guest RIP from the trapped vCPU
-    // 2. Resolve it to a kernel symbol
-    // 3. Check against the whitelist
-    //
-    // Optional override for controlled staging environments.
-    // Keep disabled in production.
-    const char *allow_patch = getenv("VMI_ALLOW_LEGIT_KERNEL_PATCH");
-    if (allow_patch && strcmp(allow_patch, "1") == 0) {
-        if (region_name &&
-            (strcmp(region_name, "sys_call_table") == 0 ||
-             strcmp(region_name, "kernel_text") == 0)) {
-            return 1;
-        }
+  // In a full implementation:
+  // 1. Read the guest RIP from the trapped vCPU
+  // 2. Resolve it to a kernel symbol
+  // 3. Check against the whitelist
+  //
+  // Optional override for controlled staging environments.
+  // Keep disabled in production.
+  const char *allow_patch = getenv("VMI_ALLOW_LEGIT_KERNEL_PATCH");
+  if (allow_patch && strcmp(allow_patch, "1") == 0) {
+    if (region_name && (strcmp(region_name, "sys_call_table") == 0 ||
+                        strcmp(region_name, "kernel_text") == 0)) {
+      return 1;
     }
+  }
 
-    // Conservative default: protected writes are hostile.
+  // Conservative default: protected writes are hostile.
 
-    return 0;  // Not legitimate → treat as hostile
+  return 0; // Not legitimate → treat as hostile
 }
 
-static enum fault_classification classify_fault(struct vmi_session *s,
-                                                uint64_t gpa,
-                                                int write_access,
-                                                const char **region_out,
-                                                int *critical_out,
-                                                int *is_collateral) {
-    if (!s || !write_access) {
-        if (region_out) *region_out = "none";
-        if (critical_out) *critical_out = 0;
-        if (is_collateral) *is_collateral = 0;
-        return FAULT_IGNORE;
+static enum fault_classification
+classify_fault(struct vmi_session *s, uint64_t gpa, int write_access,
+               const char **region_out, int *critical_out, int *is_collateral) {
+  if (!s || !write_access) {
+    if (region_out)
+      *region_out = "none";
+    if (critical_out)
+      *critical_out = 0;
+    if (is_collateral)
+      *is_collateral = 0;
+    return FAULT_IGNORE;
+  }
+
+  const char *region = "protected_page";
+  int critical = 0;
+  int collateral = 0;
+
+  int bound_res = npt_guard_check_bounds(gpa, &region, &critical);
+  if (bound_res == 2) {
+    collateral = 1;
+  } else if (bound_res == 0) {
+    // Fallback for sys_call_table if not in dynamic regions
+    if (s->syscall_table_gpa != 0 && gpa >= s->syscall_table_gpa &&
+        gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
+      region = "sys_call_table";
+      critical = 1;
     }
+  }
 
-    const char *region = "protected_page";
-    int critical = 0;
-    int collateral = 0;
+  if (region_out)
+    *region_out = region;
+  if (critical_out)
+    *critical_out = critical;
+  if (is_collateral)
+    *is_collateral = collateral;
 
-    int bound_res = npt_guard_check_bounds(gpa, &region, &critical);
-    if (bound_res == 2) {
-        collateral = 1;
-    } else if (bound_res == 0) {
-        // Fallback for sys_call_table if not in dynamic regions
-        if (s->syscall_table_gpa != 0 &&
-            gpa >= s->syscall_table_gpa &&
-            gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
-            region = "sys_call_table";
-            critical = 1;
-        }
-    }
+  if (collateral) {
+    return FAULT_LEGITIMATE; // Handled via MTF
+  }
 
-    if (region_out) *region_out = region;
-    if (critical_out) *critical_out = critical;
-    if (is_collateral) *is_collateral = collateral;
+  if (is_legitimate_fault(s, gpa, region))
+    return FAULT_LEGITIMATE;
 
-    if (collateral) {
-        return FAULT_LEGITIMATE; // Handled via MTF
-    }
-
-    if (is_legitimate_fault(s, gpa, region))
-        return FAULT_LEGITIMATE;
-
-    return critical ? FAULT_MALICIOUS : FAULT_SUSPICIOUS;
+  return critical ? FAULT_MALICIOUS : FAULT_SUSPICIOUS;
 }
 
 // ──────────────────────────────────────────────
@@ -136,20 +132,20 @@ static enum fault_classification classify_fault(struct vmi_session *s,
 // ──────────────────────────────────────────────
 
 uint32_t identify_malicious_pid(struct vmi_session *s) {
-    // In a full kvmi implementation:
-    // 1. kvmi_get_registers() to read guest RSP/CR3
-    // 2. Read current_task from the per-CPU GS segment
-    // 3. Extract PID from the current task_struct
-    //
-    // This requires the vCPU to be paused (which it is
-    // during a #NPF trap).
+  // In a full kvmi implementation:
+  // 1. kvmi_get_registers() to read guest RSP/CR3
+  // 2. Read current_task from the per-CPU GS segment
+  // 3. Extract PID from the current task_struct
+  //
+  // This requires the vCPU to be paused (which it is
+  // during a #NPF trap).
 
-    (void)s;
+  (void)s;
 
-    // Placeholder: in production, this returns the real PID
-    printf("[NPF-Handler] Identifying malicious PID from "
-           "trapped vCPU state...\n");
-    return 0;  // Unknown for now
+  // Placeholder: in production, this returns the real PID
+  printf("[NPF-Handler] Identifying malicious PID from "
+         "trapped vCPU state...\n");
+  return 0; // Unknown for now
 }
 
 // ──────────────────────────────────────────────
@@ -157,14 +153,14 @@ uint32_t identify_malicious_pid(struct vmi_session *s) {
 // ──────────────────────────────────────────────
 
 int npf_handler_init(struct vmi_session *s) {
-    (void)s;
-    printf("[NPF-Handler] Fault handler initialized\n");
-    printf("[NPF-Handler] Legitimate writers: ");
-    for (int i = 0; legitimate_writers[i]; i++) {
-        printf("%s ", legitimate_writers[i]);
-    }
-    printf("\n");
-    return 0;
+  (void)s;
+  printf("[NPF-Handler] Fault handler initialized\n");
+  printf("[NPF-Handler] Legitimate writers: ");
+  for (int i = 0; legitimate_writers[i]; i++) {
+    printf("%s ", legitimate_writers[i]);
+  }
+  printf("\n");
+  return 0;
 }
 
 // ──────────────────────────────────────────────
@@ -182,151 +178,149 @@ int npf_handler_init(struct vmi_session *s) {
 extern int npf_handler_is_authorized(uint64_t cr3, uint32_t pid);
 extern void npf_handler_clear_authorized(void);
 
-void npf_handler_process(struct vmi_session *s,
-                         uint64_t gpa,
+void npf_handler_process(struct vmi_session *s, uint64_t gpa,
                          int write_access) {
-    if (!s || !write_access) return;  // We only care about writes
+  if (!s || !write_access)
+    return; // We only care about writes
 
-    const char *region_name = "protected_page";
-    int critical = 0;
-    int is_collateral = 0;
-    enum fault_classification classification =
-        classify_fault(s, gpa, write_access, &region_name, &critical, &is_collateral);
+  const char *region_name = "protected_page";
+  int critical = 0;
+  int is_collateral = 0;
+  enum fault_classification classification = classify_fault(
+      s, gpa, write_access, &region_name, &critical, &is_collateral);
 
-    if (classification == FAULT_IGNORE)
-        return;
+  if (classification == FAULT_IGNORE)
+    return;
 
-    if (is_collateral) {
-        printf("[NPF-Handler] Collateral write detected at GPA 0x%lx (Region: %s). Activating MTF single-stepping.\n", gpa, region_name);
-        // MTF Single-Stepping Flow
-        // 1. Unprotect the page (set RW)
-        // 2. Enable MTF in vCPU execution controls
-        // 3. VMRESUME (executes exactly one instruction)
-        // 4. Trap #DB exception
-        // 5. Restore page to RO and disable MTF
-        printf("[NPF-Handler] (Simulated) Unprotecting page, arming MTF, stepping, restoring RO.\n");
-        return;
+  if (is_collateral) {
+    printf("[NPF-Handler] Collateral write detected at GPA 0x%lx (Region: %s). "
+           "Activating MTF single-stepping.\n",
+           gpa, region_name);
+    // MTF Single-Stepping Flow
+    // 1. Unprotect the page (set RW)
+    // 2. Enable MTF in vCPU execution controls
+    // 3. VMRESUME (executes exactly one instruction)
+    // 4. Trap #DB exception
+    // 5. Restore page to RO and disable MTF
+    printf("[NPF-Handler] (Simulated) Unprotecting page, arming MTF, stepping, "
+           "restoring RO.\n");
+    return;
+  }
+
+  printf("[NPF-Handler] ══════════════════════════════════════\n");
+  printf("[NPF-Handler] #NPF TRAPPED — WRITE TO PROTECTED PAGE\n");
+  printf("[NPF-Handler] ══════════════════════════════════════\n");
+  printf("[NPF-Handler] Fault GPA: 0x%lx\n", gpa);
+  printf("[NPF-Handler] Region: %s\n", region_name);
+
+  int syscall_target = 0;
+
+  // Calculate which syscall entry was targeted
+  if (s->syscall_table_gpa != 0) {
+    if (gpa >= s->syscall_table_gpa &&
+        gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
+      syscall_target = 1;
     }
 
-    printf("[NPF-Handler] ══════════════════════════════════════\n");
-    printf("[NPF-Handler] #NPF TRAPPED — WRITE TO PROTECTED PAGE\n");
-    printf("[NPF-Handler] ══════════════════════════════════════\n");
-    printf("[NPF-Handler] Fault GPA: 0x%lx\n", gpa);
-    printf("[NPF-Handler] Region: %s\n", region_name);
-
-    int syscall_target = 0;
-
-    // Calculate which syscall entry was targeted
-    if (s->syscall_table_gpa != 0) {
-        if (gpa >= s->syscall_table_gpa &&
-            gpa < s->syscall_table_gpa + SYSCALL_TABLE_SIZE) {
-            syscall_target = 1;
-        }
-
-        int entry_index = (int)((gpa - s->syscall_table_gpa) / SYSCALL_ENTRY_SIZE);
-        if (entry_index >= 0 && entry_index < 512) {
-            printf("[NPF-Handler] Targeted syscall entry: %d\n",
-                   entry_index);
-        }
+    int entry_index = (int)((gpa - s->syscall_table_gpa) / SYSCALL_ENTRY_SIZE);
+    if (entry_index >= 0 && entry_index < 512) {
+      printf("[NPF-Handler] Targeted syscall entry: %d\n", entry_index);
     }
+  }
 
-    // Check if this is a legitimate kernel operation
-    if (classification == FAULT_LEGITIMATE) {
-        printf("[NPF-Handler] Fault classified as LEGITIMATE "
-               "(ftrace/livepatch)\n");
-        return;
-    }
+  // Check if this is a legitimate kernel operation
+  if (classification == FAULT_LEGITIMATE) {
+    printf("[NPF-Handler] Fault classified as LEGITIMATE "
+           "(ftrace/livepatch)\n");
+    return;
+  }
 
-    // This is hostile. Identify the attacker.
-    uint32_t malicious_pid = identify_malicious_pid(s);
+  // This is hostile. Identify the attacker.
+  uint32_t malicious_pid = identify_malicious_pid(s);
 
-    if (npf_handler_is_authorized(s->kernel_pgd, malicious_pid)) {
-        printf("[NPF-Handler] Authorized Map Update detected (Intent via CPUID).\n");
-        printf("[NPF-Handler] Activating MTF single-stepping to allow map write...\n");
-        // Simulated MTF: 
-        // 1. Unprotect page (RWX)
-        // 2. Enable MTF
-        // 3. Resume vCPU
-        // 4. Trap #DB (MTF)
-        // 5. Re-lock page
-        printf("[NPF-Handler] (Simulated) Unprotecting page, arming MTF, stepping, restoring RO.\n");
-        printf("[HEKI-Drawbridge] Map updated successfully. Page Re-locked.\n");
-        
-        npf_handler_clear_authorized();
-        
-        // Since we are simulating the update by taking a new snapshot
-        // We shouldn't raise an alert! In a real setup, KVM handles the instruction.
-        // We return here. But since the mock polled memory and saw a diff,
-        // we must update the snapshot so it doesn't keep faulting!
-        // The npt_guard automatically updates snapshot if we return. Wait, npt_guard only updates snapshot if classify_fault is FAULT_LEGITIMATE.
-        // We will just let npt_guard see it again? No, we return.
-        return;
-    }
+  if (npf_handler_is_authorized(s->kernel_pgd, malicious_pid)) {
+    printf(
+        "[NPF-Handler] Authorized Map Update detected (Intent via CPUID).\n");
+    printf(
+        "[NPF-Handler] Activating MTF single-stepping to allow map write...\n");
+    // Simulated MTF:
+    // 1. Unprotect page (RWX)
+    // 2. Enable MTF
+    // 3. Resume vCPU
+    // 4. Trap #DB (MTF)
+    // 5. Re-lock page
+    printf("[NPF-Handler] (Simulated) Unprotecting page, arming MTF, stepping, "
+           "restoring RO.\n");
+    printf("[HEKI-Drawbridge] Map updated successfully. Page Re-locked.\n");
 
-    printf("[NPF-Handler] ⚠ CLASSIFICATION: %s\n",
-           classification_to_string(classification));
-    printf("[NPF-Handler] ⚠ Attacker PID: %u\n", malicious_pid);
-    printf("[NPF-Handler] ⚠ Action: Signaling cross-layer bridge\n");
+    npf_handler_clear_authorized();
 
-    // Signal to the cross-layer bridge
-    char reason[128];
-    if (syscall_target) {
-        snprintf(reason, sizeof(reason),
-                 "syscall_table_write: GPA=0x%lx", gpa);
-        bridge_signal_malicious(malicious_pid, reason);
+    // Since we are simulating the update by taking a new snapshot
+    // We shouldn't raise an alert! In a real setup, KVM handles the
+    // instruction. We return here. But since the mock polled memory and saw a
+    // diff, we must update the snapshot so it doesn't keep faulting! The
+    // npt_guard automatically updates snapshot if we return. Wait, npt_guard
+    // only updates snapshot if classify_fault is FAULT_LEGITIMATE. We will just
+    // let npt_guard see it again? No, we return.
+    return;
+  }
+
+  printf("[NPF-Handler] ⚠ CLASSIFICATION: %s\n",
+         classification_to_string(classification));
+  printf("[NPF-Handler] ⚠ Attacker PID: %u\n", malicious_pid);
+  printf("[NPF-Handler] ⚠ Action: Signaling cross-layer bridge\n");
+
+  // Signal to the cross-layer bridge
+  char reason[128];
+  if (syscall_target) {
+    snprintf(reason, sizeof(reason), "syscall_table_write: GPA=0x%lx", gpa);
+    bridge_signal_malicious(malicious_pid, reason);
+  } else {
+    snprintf(reason, sizeof(reason), "%s_write: GPA=0x%lx", region_name, gpa);
+    if (classification == FAULT_MALICIOUS || critical) {
+      bridge_signal_malicious(malicious_pid, reason);
     } else {
-        snprintf(reason, sizeof(reason),
-                 "%s_write: GPA=0x%lx", region_name, gpa);
-        if (classification == FAULT_MALICIOUS || critical) {
-            bridge_signal_malicious(malicious_pid, reason);
-        } else {
-            bridge_signal_suspicious(malicious_pid, reason);
-        }
+      bridge_signal_suspicious(malicious_pid, reason);
     }
+  }
 
-    printf("[NPF-Handler] ⚠ Response chain activated:\n");
-    printf("[NPF-Handler]   → vmi_alert_map updated\n");
-    printf("[NPF-Handler]   → Hyperion XDP: XDP_DROP for PID %u\n",
-           malicious_pid);
-    printf("[NPF-Handler]   → Telos Runtime: TAINT_CRITICAL\n");
-    printf("[NPF-Handler]   → Zero bytes leave this machine\n");
+  printf("[NPF-Handler] ⚠ Response chain activated:\n");
+  printf("[NPF-Handler]   → vmi_alert_map updated\n");
+  printf("[NPF-Handler]   → Hyperion XDP: XDP_DROP for PID %u\n",
+         malicious_pid);
+  printf("[NPF-Handler]   → Telos Runtime: TAINT_CRITICAL\n");
+  printf("[NPF-Handler]   → Zero bytes leave this machine\n");
 }
 
 int npf_handler_report_integrity_violation(struct vmi_session *s,
                                            const char *region_name,
-                                           uint64_t gpa,
-                                           uint64_t expected_hash,
-                                           uint64_t actual_hash,
-                                           int critical) {
-    if (!s || !region_name)
-        return -1;
+                                           uint64_t gpa, uint64_t expected_hash,
+                                           uint64_t actual_hash, int critical) {
+  if (!s || !region_name)
+    return -1;
 
-    uint32_t suspect_pid = identify_malicious_pid(s);
+  uint32_t suspect_pid = identify_malicious_pid(s);
 
-    printf("[NPF-Handler] ══════════════════════════════════════\n");
-    printf("[NPF-Handler] INTEGRITY VIOLATION DETECTED\n");
-    printf("[NPF-Handler] ══════════════════════════════════════\n");
-    printf("[NPF-Handler] Region: %s\n", region_name);
-    printf("[NPF-Handler] GPA: 0x%lx\n", gpa);
-    printf("[NPF-Handler] Expected hash: 0x%lx\n", expected_hash);
-    printf("[NPF-Handler] Current  hash: 0x%lx\n", actual_hash);
-    printf("[NPF-Handler] Classification: %s\n",
-           critical ? "MALICIOUS" : "SUSPICIOUS");
+  printf("[NPF-Handler] ══════════════════════════════════════\n");
+  printf("[NPF-Handler] INTEGRITY VIOLATION DETECTED\n");
+  printf("[NPF-Handler] ══════════════════════════════════════\n");
+  printf("[NPF-Handler] Region: %s\n", region_name);
+  printf("[NPF-Handler] GPA: 0x%lx\n", gpa);
+  printf("[NPF-Handler] Expected hash: 0x%lx\n", expected_hash);
+  printf("[NPF-Handler] Current  hash: 0x%lx\n", actual_hash);
+  printf("[NPF-Handler] Classification: %s\n",
+         critical ? "MALICIOUS" : "SUSPICIOUS");
 
-    char reason[160];
-    snprintf(reason,
-             sizeof(reason),
-             "%s_integrity_violation: GPA=0x%lx baseline=0x%lx current=0x%lx",
-             region_name,
-             gpa,
-             expected_hash,
-             actual_hash);
+  char reason[160];
+  snprintf(reason, sizeof(reason),
+           "%s_integrity_violation: GPA=0x%lx baseline=0x%lx current=0x%lx",
+           region_name, gpa, expected_hash, actual_hash);
 
-    if (critical) {
-        bridge_signal_malicious(suspect_pid, reason);
-    } else {
-        bridge_signal_suspicious(suspect_pid, reason);
-    }
+  if (critical) {
+    bridge_signal_malicious(suspect_pid, reason);
+  } else {
+    bridge_signal_suspicious(suspect_pid, reason);
+  }
 
-    return 0;
+  return 0;
 }

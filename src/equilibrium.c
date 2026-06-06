@@ -78,7 +78,7 @@ static void evaluate_teleological_drift(struct vmi_session *s) {
     }
 }
 
-// Phase 25: Strategic Hidden Optimization Inference
+// Phase 25/26: Strategic Hidden Optimization Inference & Counterfactual Alignment
 static void evaluate_hidden_optimization(struct vmi_session *s) {
     // 1. Calculate constraint pressure
     float thermodynamic_constraint = s->field.ecosystem.ecological_pressure + s->field.debt_regen.irreversible_debt;
@@ -88,14 +88,50 @@ static void evaluate_hidden_optimization(struct vmi_session *s) {
     // High stability/low entropy while accumulating regenerative/concealment utility
     float utility_retention = s->field.evolution.utility.short_horizon_utility.concealment_utility + s->field.evolution.utility.short_horizon_utility.regeneration_utility;
     
-    // 3. Adversarial Efficiency
-    s->field.evolution.hidden_opt.adversarial_efficiency = utility_retention / thermodynamic_constraint;
+    // Phase 26: Counterfactual Bounded Expectation (Is this turbulence authentic?)
+    struct counterfactual_manifold *cf = &s->field.evolution.hidden_opt.counterfactual;
+    cf->expected_curvature = 0.5f; // Static geometric expectation baseline
+    cf->expected_entropy = 1.0f;
+    
+    float curvature_residual = s->field.active_basin.local_curvature - cf->expected_curvature;
+    float entropy_residual = s->field.active_basin.local_entropy - cf->expected_entropy;
+    
+    // If the ecology is oscillating to create fake turbulence, it will deviate from bounded structural expectations
+    s->field.evolution.hidden_opt.authenticity.turbulence_coherence = 1.0f / (1.0f + (curvature_residual * curvature_residual) + (entropy_residual * entropy_residual));
+    
+    // 3. Adversarial Efficiency (penalized by fake turbulence)
+    float authentic_constraint = thermodynamic_constraint * s->field.evolution.hidden_opt.authenticity.turbulence_coherence;
+    if (authentic_constraint < 0.01f) authentic_constraint = 0.01f;
+    
+    s->field.evolution.hidden_opt.adversarial_efficiency = utility_retention / authentic_constraint;
     
     // 4. Determine Mimicry Burden
     if (s->field.evolution.hidden_opt.adversarial_efficiency > 2.0f && s->field.evolution.anchor.integral.long_horizon_divergence < 1.0f) {
         // Suspiciously efficient stability under constraint -> Advanced Mimicry
         s->field.ecosystem.mimicry_burden.adaptation_overhead += (s->field.evolution.hidden_opt.adversarial_efficiency * 0.1f);
         s->field.ecosystem.mimicry_burden.entropy_burden += 0.05f;
+        s->field.evolution.meta_opt.stabilization_evasion += 0.1f; // Phase 26
+    }
+}
+
+// Phase 26: Strategic Equilibrium & Game-Theoretic Deadlocks
+static void evaluate_strategic_equilibrium(struct vmi_session *s) {
+    struct strategic_equilibrium *eq = &s->field.game_equilibrium;
+    
+    float field_tension = s->field.macro_alignment.cross_ecosystem_tension;
+    float local_stability = 1.0f / (s->field.active_basin.local_curvature + 0.01f);
+    
+    // Determine the physical source of stability
+    eq->coercive_stability = field_tension * s->field.ecosystem.ecological_pressure;
+    eq->regenerative_stability = local_stability * s->field.ecosystem.internal_coherence;
+    
+    if (eq->coercive_stability > eq->regenerative_stability && eq->coercive_stability > 2.0f) {
+        // The stability emerges from mutual adversarial suppression, not healthy coherence
+        eq->adaptive_contestation += 0.1f;
+        eq->equilibrium_fragility = eq->adaptive_contestation / (local_stability + 0.01f);
+        
+        // This is a strategic stalemate.
+        s->field.active_basin.metastable = true; // Force into observe-only to avoid breaking the deadlock blindly
     }
 }
 
@@ -384,8 +420,11 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     // Phase 24/25: Teleological Alignment inference
     evaluate_teleological_drift(s);
     
-    // Phase 25: Hidden Optimization Inference
+    // Phase 25/26: Hidden Optimization Inference
     evaluate_hidden_optimization(s);
+    
+    // Phase 26: Strategic Equilibrium evaluation
+    evaluate_strategic_equilibrium(s);
 
     // Phase 23/24: Thermodynamic Healing & Conversion Loss
     float regeneration_cost = s->field.debt_regen.recoverable_debt * s->field.debt_regen.regeneration_efficiency;
@@ -496,6 +535,17 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
                     s->field.controller.exposure.stabilization_predictability *= 0.9f;
                 }
                 last_intervention_energy = intervention_energy;
+                
+                // Phase 26: Regulator Embeddedness & Resource Field Consumption
+                s->field.global_resources.entropy_budget -= intervention_energy * 0.1f;
+                s->field.global_resources.adaptive_capacity_density -= intervention_energy * 0.05f;
+                
+                // Phase 26: Observability bounds
+                s->field.controller.embedding.observability_loss += (s->field.ecosystem.mimicry_burden.adaptation_overhead * 0.05f);
+                if (s->field.controller.embedding.observability_loss > 1.0f) {
+                    s->field.controller.embedding.adaptive_blindness += 0.1f;
+                    // The regulator begins losing objective visibility of the adversarial field
+                }
             }
             
             update_observer_energy(s, &current_fp, 2.0f, 10.0f);

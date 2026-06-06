@@ -456,6 +456,18 @@ sentinel-vmi/
 - Embeds **Regulator Adversarial Exposure**. Sentinel actively observes its own stabilization predictability and the `adaptation_response_rate` of the target ecology, mathematically verifying if an ecosystem is rapidly adjusting its topological fingerprint specifically to out-adapt the observer.
 
 </details>
+
+<details>
+<summary><b>Phase 26: Field-Adaptive Strategic Dynamics</b> — Layer 9 Field Mechanics</summary>
+
+- Progresses Sentinel into **Strategic Adaptive Field Mechanics (Layer 9)**. Advanced ecologies are no longer modeled adapting *inside* a fixed semantic field; they are now modeled adapting the *field itself*, manipulating detection geometry and thermodynamics.
+- Defines **Semantic Resource Competition** via a `semantic_resource_field` where adaptive capacity and entropy budgets are strictly or semi-conserved. Ecologies must geometrically compete over physical evolution pathways, forcing resource-starvation mechanics onto camouflage.
+- Implements **Counterfactual Alignment Simulation**. When an ecology oscillates its topology to create fake, engineered turbulence (evading adversarial efficiency detection), Sentinel compares its trajectory against a bounded `counterfactual_manifold`. If the turbulence lacks `entropy_authenticity`, the ecology is mathematically penalized for stabilization evasion.
+- Solves **Strategic Equilibria Deadlocks**. By analyzing the physical source of field stability, the engine distinguishes healthy ecological coherence from fragile, coercive deadlocks (`adaptive_contestation`) caused by mutual adversarial suppression.
+- Expands global adversarial adaptation into **Cooperative Distributed Mimicry**. Parasitic topologies can form decentralized insurgency geometries (`coalition_resilience`), collectively laundering intent and distributing entropy generation.
+- Formally embeds the regulator into the thermodynamic environment via `regulator_embedding`. Sentinel mathematically recognizes that its interventions burn field adaptive capacity, resulting in inevitable `observability_loss` and `adaptive_blindness` as the adversary explicitly adapts around observation boundaries.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

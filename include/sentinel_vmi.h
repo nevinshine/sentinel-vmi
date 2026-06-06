@@ -321,11 +321,20 @@ struct regulator_exposure {
     float adaptation_response_rate;
 };
 
+struct regulator_embedding {
+    float field_dependency;
+    float strategic_visibility;
+    float ecological_influence;
+    float observability_loss;
+    float adaptive_blindness;
+};
+
 struct equilibrium_controller {
     float target_stabilization_frequency;
     float observer_decay_rate;
     uint64_t next_intervention_epoch;
     struct regulator_exposure exposure;
+    struct regulator_embedding embedding;
     float observer_suppression;
     bool continuous_regulation;
 };
@@ -514,10 +523,26 @@ struct utility_persistence {
     float utility_stability;
 };
 
+// Phase 26
+struct counterfactual_manifold {
+    float expected_curvature;
+    float expected_flux;
+    float expected_entropy;
+    float expected_adaptation_rate;
+};
+
+struct entropy_authenticity {
+    float stochastic_legitimacy;
+    float turbulence_coherence;
+    float deployment_similarity;
+};
+
 struct hidden_optimization_gradient {
     float local_instability_suppression;
     float persistent_utility_bias;
     float adversarial_efficiency;
+    struct entropy_authenticity authenticity;
+    struct counterfactual_manifold counterfactual;
 };
 
 struct mimicry_cost {
@@ -536,11 +561,20 @@ struct strategic_interaction_local {
     float adaptive_advantage;
 };
 
+// Phase 26
+struct cooperative_mimicry {
+    float distributed_concealment;
+    float authority_fragmentation;
+    float coalition_efficiency;
+    float coalition_centralization;
+    float coalition_resilience;
+};
+
 struct strategic_interaction_global {
     float distributed_camouflage;
     float entropy_balancing;
     float field_legitimacy_shaping;
-    float cooperative_parasitism;
+    struct cooperative_mimicry coalition;
 };
 
 struct ecological_graph {
@@ -548,6 +582,22 @@ struct ecological_graph {
     float topology_polarization;
     struct strategic_interaction_local local_interactions[4];
     struct strategic_interaction_global global_interaction;
+};
+
+// Phase 26
+struct semantic_resource_field {
+    float adaptive_capacity_density;   // Semi-conserved
+    float entropy_budget;              // Strictly conserved
+    float regenerative_availability;   // Recoverable
+    float stabilization_attention;     // Regulator-bounded
+};
+
+struct strategic_equilibrium {
+    float local_stability;
+    float adaptive_contestation;
+    float equilibrium_fragility;
+    float coercive_stability;
+    float regenerative_stability;
 };
 
 struct ecological_alignment_field {
@@ -658,16 +708,24 @@ struct scar_cluster {
     struct topology_remodeling remodeling;
 };
 
+struct meta_adaptation {
+    float pressure_geometry_adaptation;
+    float entropy_navigation;
+    float stabilization_evasion;
+    float regulatory_shadowing;
+};
+
 struct evolutionary_drift {
     float topology_divergence_rate;
     float attractor_mutation_rate;
     float coherence_preservation;
     
-    // Phase 24/25
+    // Phase 24/25/26
     struct teleological_alignment teleology;
     struct utility_persistence utility;
     struct hidden_optimization_gradient hidden_opt;
     struct teleological_anchor anchor;
+    struct meta_adaptation meta_opt;
 };
 
 struct regenerative_capacity {
@@ -735,6 +793,10 @@ struct semantic_field {
     
     struct ecological_alignment_field macro_alignment;
     struct selective_pressure pressure_field;
+    
+    // Phase 26
+    struct semantic_resource_field global_resources;
+    struct strategic_equilibrium game_equilibrium;
     
     struct regenerative_capacity regeneration;
     struct semantic_ecosystem ecosystem;

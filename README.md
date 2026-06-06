@@ -407,6 +407,18 @@ sentinel-vmi/
 - Formally isolates the concept of mathematical **Trust Collapse** from deterministic **Topology Reconfiguration**, laying the foundation for autonomous resilience.
 
 </details>
+
+<details>
+<summary><b>Phase 22: Semantic Reconfiguration Mechanics</b> — Adaptive topology governance</summary>
+
+- Finalizes the transition from flat security stabilization into **Geometric Execution Dynamics**, differentiating between mathematical Trust Collapse (attacks) and large-scale Ecological Reconfiguration (orchestration shocks).
+- Implements an **Anisotropic Compressibility Tensor**, formally recognizing that execution ecologies compress unevenly across authority, namespace, and execution axes.
+- Conserves macroscopic restructuring energy through a resolved **Phase Energy Tensor**, modeling the exact thermodynamic redistribution of instability before phase boundaries are breached.
+- Tracks **Latent Phase Energy** mathematically as stored geometric strain (`suppressed divergence + reduced elasticity + high coupling`), ensuring that stable rootkits masking their external flux are still targeted for regulation.
+- Employs **Spatiotemporal Distance** by attaching a `temporal_gradient` to Topology Fingerprints, meaning identical structural shapes expanding at different speeds are mathematically differentiated.
+- Limits Observer Poisoning through localized, priority-evicted **Observer Scars**, favoring the decay of slowly-healing localized trauma over short-term temporal noise.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

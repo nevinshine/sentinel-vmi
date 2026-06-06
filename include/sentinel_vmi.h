@@ -119,6 +119,29 @@ struct stability_basin {
     float metastability_margin;
 };
 
+struct temporal_gradient {
+    float expansion_rate;
+    float contraction_rate;
+    float propagation_rate;
+};
+
+struct topology_fingerprint {
+    float curvature;
+    float shear;
+    float flux;
+    float entropy;
+    float resonance;
+    struct temporal_gradient temporal_drift;
+};
+
+struct observer_scar {
+    struct topology_fingerprint region;
+    float accumulated_distortion;
+    float recovery_progress;
+    float semantic_severity;
+    uint64_t last_epoch;
+};
+
 struct observer_effect {
     float intervention_disruption;
     float stabilization_gain;
@@ -127,8 +150,10 @@ struct observer_effect {
     float namespace_disruption;
     bool observer_dominating;
     
-    // Phase 21
+    // Phase 21/22
     float observer_energy_integral;
+    struct observer_scar local_scars[16];
+    size_t nr_scars;
 };
 
 struct stability_gradient {
@@ -154,13 +179,22 @@ struct semantic_trajectory {
     float projection_confidence;
 };
 
-// Phase 20/21: Autonomous Equilibrium Steering & Phase Mechanics
+// Phase 20/21/22: Autonomous Equilibrium Steering & Phase Mechanics
 enum semantic_phase {
     PHASE_ORDERED,
     PHASE_META_STABLE,
     PHASE_TRANSITIONAL,
     PHASE_TURBULENT,
     PHASE_COLLAPSED
+};
+
+enum reconfiguration_mode {
+    RECONFIG_NONE,
+    RECONFIG_ADAPTIVE,
+    RECONFIG_MIGRATORY,
+    RECONFIG_COMPARTMENTALIZING,
+    RECONFIG_COLLAPSING,
+    RECONFIG_PARASITIC
 };
 
 struct phase_transition {
@@ -170,18 +204,19 @@ struct phase_transition {
     float transition_energy;
 };
 
-struct semantic_compressibility {
-    float authority_compressibility;
-    float namespace_compressibility;
-    float execution_compressibility;
+struct phase_energy_tensor {
+    float authority_energy;
+    float namespace_energy;
+    float execution_energy;
+    float transferred_energy;
+    float dissipated_energy;
 };
 
-struct topology_fingerprint {
-    float curvature;
-    float shear;
-    float flux;
-    float entropy;
-    float resonance;
+struct compressibility_tensor {
+    float authority_axis;
+    float namespace_axis;
+    float execution_axis;
+    float cross_axis_coupling;
 };
 
 struct criticality_field {
@@ -190,10 +225,21 @@ struct criticality_field {
     float collapse_sensitivity;
 };
 
+struct cascade_front {
+    float authority_front;
+    float namespace_front;
+    float execution_front;
+};
+
 struct criticality_cascade {
     float cascade_probability;
     uint64_t projected_propagation_depth;
     bool self_amplifying;
+    
+    // Phase 22
+    float dissipation_rate;
+    float saturation_threshold;
+    struct cascade_front front;
 };
 
 struct topology_scar {
@@ -216,11 +262,20 @@ struct basin_coupling {
     float propagation_risk;
 };
 
-struct stabilization_memory {
+struct topology_memory {
     struct topology_fingerprint fingerprint;
+    bool destabilizing_pattern;
+};
+
+struct intervention_memory {
+    uint64_t intervention_hash;
     float historical_gain;
     float historical_distortion;
-    bool destabilizing_pattern;
+};
+
+struct phase_memory {
+    enum semantic_phase historical_phase;
+    float peak_phase_energy;
 };
 
 struct semantic_resonance {
@@ -332,6 +387,9 @@ struct local_basin {
     bool isolated;
     bool repairable;
     
+    // Phase 22
+    float latent_phase_energy;
+    
     // Phase 21
     bool metastable;
     float metastability_margin;
@@ -370,14 +428,18 @@ struct semantic_field {
     struct counterfactual_result optimal_stabilization;
     struct local_basin active_basin;
     struct basin_coupling local_coupling;
-    struct stabilization_memory control_memory;
     
-    // Phase 21
+    struct topology_memory top_memory;
+    struct intervention_memory int_memory;
+    struct phase_memory ph_memory;
+    
+    // Phase 21/22
     struct phase_transition phase_state;
-    struct semantic_compressibility compressibility;
+    struct compressibility_tensor compressibility;
     struct criticality_field criticality;
     struct criticality_cascade criticality_cascade;
-    float phase_energy;
+    struct phase_energy_tensor phase_energy;
+    enum reconfiguration_mode reconfig_mode;
     
     enum semantic_phase phase;
     

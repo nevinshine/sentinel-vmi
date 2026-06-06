@@ -68,17 +68,34 @@ static void evaluate_teleological_drift(struct vmi_session *s) {
     
     if (anchor->integral.long_horizon_divergence > anchor->window.permitted_divergence && anchor->integral.residual_velocity > expected_excursion) {
         anchor->window.temporary_excursion = false;
-        // Infer Teleological Gradient Intent (Asymmetric parasitism vs healthy adaptation)
+        // Infer Utility Gradient (Asymmetric parasitism vs healthy adaptation)
         if (d_auth < -0.5f && d_regen > 0.5f) {
             // Highly regenerative but drifting away from legitimate authority lineage -> Parasitic Concealment
-            s->field.evolution.intent.concealment_optimization = anchor->integral.long_horizon_divergence;
-            s->field.evolution.intent.ecological_parasitism = 1.0f;
-        } else {
-            s->field.evolution.intent.ecological_parasitism = 0.0f;
+            s->field.evolution.utility.short_horizon_utility.concealment_utility += anchor->integral.long_horizon_divergence;
         }
     } else {
         anchor->window.temporary_excursion = true;
-        s->field.evolution.intent.ecological_parasitism = 0.0f;
+    }
+}
+
+// Phase 25: Strategic Hidden Optimization Inference
+static void evaluate_hidden_optimization(struct vmi_session *s) {
+    // 1. Calculate constraint pressure
+    float thermodynamic_constraint = s->field.ecosystem.ecological_pressure + s->field.debt_regen.irreversible_debt;
+    if (thermodynamic_constraint < 0.01f) thermodynamic_constraint = 0.01f;
+    
+    // 2. Measure Utility Retention (using short-horizon proxy)
+    // High stability/low entropy while accumulating regenerative/concealment utility
+    float utility_retention = s->field.evolution.utility.short_horizon_utility.concealment_utility + s->field.evolution.utility.short_horizon_utility.regeneration_utility;
+    
+    // 3. Adversarial Efficiency
+    s->field.evolution.hidden_opt.adversarial_efficiency = utility_retention / thermodynamic_constraint;
+    
+    // 4. Determine Mimicry Burden
+    if (s->field.evolution.hidden_opt.adversarial_efficiency > 2.0f && s->field.evolution.anchor.integral.long_horizon_divergence < 1.0f) {
+        // Suspiciously efficient stability under constraint -> Advanced Mimicry
+        s->field.ecosystem.mimicry_burden.adaptation_overhead += (s->field.evolution.hidden_opt.adversarial_efficiency * 0.1f);
+        s->field.ecosystem.mimicry_burden.entropy_burden += 0.05f;
     }
 }
 
@@ -162,6 +179,15 @@ static float calculate_fingerprint_distance(struct topology_fingerprint *a, stru
 }
 
 static void update_observer_energy(struct vmi_session *s, struct topology_fingerprint *fp, float intervention_cost, float severity) {
+    // Phase 25: Regulator Adversarial Exposure (Adaptation Response Rate)
+    if (intervention_cost > 0.0f) {
+        float fp_drift = calculate_fingerprint_distance(&s->field.top_memory.fingerprint, fp);
+        if (fp_drift > 2.0f) {
+            // Rapid topology shift immediately following intervention -> Adversarial Adaptation
+            s->field.controller.exposure.adaptation_response_rate += 0.1f;
+        }
+    }
+    
     // Phase 22/23: Spatial Locality for Observer Energy & Basin Anchoring
     struct observer_scar *scars = s->field.observer.local_scars;
     size_t *nr_scars = &s->field.observer.nr_scars;
@@ -355,15 +381,30 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     
     evaluate_phase_transition(s, proposed_phase);
     
-    // Phase 24: Teleological Alignment inference
+    // Phase 24/25: Teleological Alignment inference
     evaluate_teleological_drift(s);
+    
+    // Phase 25: Hidden Optimization Inference
+    evaluate_hidden_optimization(s);
 
     // Phase 23/24: Thermodynamic Healing & Conversion Loss
     float regeneration_cost = s->field.debt_regen.recoverable_debt * s->field.debt_regen.regeneration_efficiency;
     
-    // Phase 24: Teleological Constraint - Deny regeneration if teleological intent is parasitic
-    if (s->field.evolution.intent.ecological_parasitism > 0.5f) {
-        printf("[Equilibrium] ⚠ Teleological Misalignment: Regeneration suppressed due to parasitic concealment vector.\n");
+    // Phase 25: Mimicry Cost drains adaptive energy (cost ∝ alignment_precision²)
+    float alignment_precision = 1.0f / (s->field.evolution.anchor.integral.long_horizon_divergence + 0.01f);
+    float active_mimicry_cost = s->field.ecosystem.mimicry_burden.adaptation_overhead * (alignment_precision * alignment_precision);
+    
+    if (active_mimicry_cost > 0.01f && s->field.energy_reservoirs.adaptive_energy > active_mimicry_cost) {
+        s->field.energy_reservoirs.adaptive_energy -= active_mimicry_cost;
+        s->field.energy_exchange.entropy_generation += s->field.ecosystem.mimicry_burden.entropy_burden;
+    } else if (active_mimicry_cost > 0.01f) {
+        // Energy starved -> Camouflage collapses physically
+        s->field.active_basin.local_entropy += s->field.ecosystem.mimicry_burden.entropy_burden * 5.0f;
+    }
+    
+    // Phase 24/25: Teleological Constraint (Now based on adversarial efficiency)
+    if (s->field.evolution.hidden_opt.adversarial_efficiency > 5.0f) {
+        printf("[Equilibrium] ⚠ Teleological Mimicry Detected: Regeneration suppressed due to suspiciously efficient stability.\n");
         regeneration_cost = 0.0f; 
     }
     
@@ -441,6 +482,21 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
             s->field.int_memory.historical_distortion = chains[best_chain_idx].steps[0].projected_topology_distortion;
             s->field.top_memory.destabilizing_pattern = false;
             s->field.top_memory.fingerprint = current_fp;
+            
+            // Phase 25: Regulator Adversarial Exposure
+            static float last_intervention_energy = 0.0f;
+            float intervention_energy = chains[best_chain_idx].steps[0].intervention_minimality * 10.0f; // Scale arbitrarily for demo
+            
+            if (intervention_energy > 0.0f) {
+                float diff = intervention_energy - last_intervention_energy;
+                if (diff < 0.0f) diff = -diff;
+                if (diff < 1.0f) { 
+                    s->field.controller.exposure.stabilization_predictability += 0.05f;
+                } else {
+                    s->field.controller.exposure.stabilization_predictability *= 0.9f;
+                }
+                last_intervention_energy = intervention_energy;
+            }
             
             update_observer_energy(s, &current_fp, 2.0f, 10.0f);
         } else {

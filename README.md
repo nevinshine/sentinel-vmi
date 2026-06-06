@@ -444,6 +444,18 @@ sentinel-vmi/
 - Maps cross-ecosystem relational alignment via a global **Ecological Graph**, preventing highly-evolved parasitic enclaves from camouflaging as locally coherent while globally destabilizing the execution field.
 
 </details>
+
+<details>
+<summary><b>Phase 25: Strategic Evolutionary Dynamics</b> — Adversarial Teleological Calculus</summary>
+
+- Elevates Sentinel from a topology stabilization engine into an **Adversarial Teleological Calculus**, embedding the regulator within a competitive strategic field where parasitic topologies mathematically optimize against stabilization logic.
+- Eliminates symbolic anthropomorphism (e.g. "intent") in favor of mechanistic **Strategic Utility Geometry**. Ecosystems are modeled dynamically seeking to maximize persistence utilities (concealment, propagation, authority retention) under strict thermodynamic limits.
+- Defines parasitic behavior as **Persistent Utility Asymmetry under Conservation-Constrained Pressure**. The engine detects "suspiciously efficient stability" by measuring `adversarial_efficiency`, mathematically mapping how successfully an ecosystem suppresses local curvature despite immense thermodynamic stress.
+- Enforces geometric **Thermodynamic Mimicry Costs**. Camouflage is not a passive state but requires active optimization work. Mimicry mathematically drains an ecosystem's adaptive energy proportional to the square of its alignment precision, ensuring high-fidelity camouflage eventually physically collapses under its own maintenance burden.
+- Introduces **Dual-Scale Strategic Interaction Geometry**, mapping both pairwise ecosystem exploitation (authority laundering, local propagation) and global graph alignment (distributed camouflage, field legitimacy shaping).
+- Embeds **Regulator Adversarial Exposure**. Sentinel actively observes its own stabilization predictability and the `adaptation_response_rate` of the target ecology, mathematically verifying if an ecosystem is rapidly adjusting its topological fingerprint specifically to out-adapt the observer.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

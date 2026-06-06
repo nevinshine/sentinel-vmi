@@ -314,10 +314,18 @@ struct semantic_homeostasis {
     bool self_correcting;
 };
 
+struct regulator_exposure {
+    float stabilization_predictability;
+    float deadzone_exploitability;
+    float observer_dependency;
+    float adaptation_response_rate;
+};
+
 struct equilibrium_controller {
-    float correction_rate;
-    float damping_factor;
-    float stabilization_bias;
+    float target_stabilization_frequency;
+    float observer_decay_rate;
+    uint64_t next_intervention_epoch;
+    struct regulator_exposure exposure;
     float observer_suppression;
     bool continuous_regulation;
 };
@@ -491,16 +499,55 @@ struct topology_remodeling {
     float adaptive_loss;
 };
 
-struct teleological_gradient {
-    float coherence_optimization;
-    float concealment_optimization;
-    float authority_preservation;
-    float ecological_parasitism;
+// Phase 25
+struct strategic_utility {
+    float concealment_utility;
+    float propagation_utility;
+    float authority_retention_utility;
+    float regeneration_utility;
+    float adaptation_utility;
+};
+
+struct utility_persistence {
+    struct strategic_utility short_horizon_utility;
+    struct strategic_utility long_horizon_utility;
+    float utility_stability;
+};
+
+struct hidden_optimization_gradient {
+    float local_instability_suppression;
+    float persistent_utility_bias;
+    float adversarial_efficiency;
+};
+
+struct mimicry_cost {
+    float coherence_burden;
+    float regenerative_burden;
+    float entropy_burden;
+    float adaptation_overhead;
+};
+
+struct strategic_interaction_local {
+    uint64_t source_ecosystem;
+    uint64_t target_ecosystem;
+    float suppressive_pressure;
+    float exploitative_pressure;
+    float mimicry_pressure;
+    float adaptive_advantage;
+};
+
+struct strategic_interaction_global {
+    float distributed_camouflage;
+    float entropy_balancing;
+    float field_legitimacy_shaping;
+    float cooperative_parasitism;
 };
 
 struct ecological_graph {
     float global_alignment_curvature;
     float topology_polarization;
+    struct strategic_interaction_local local_interactions[4];
+    struct strategic_interaction_global global_interaction;
 };
 
 struct ecological_alignment_field {
@@ -576,7 +623,7 @@ struct release_feedback {
     float regeneration_suppression;
 };
 
-// Phase 23/24 Updates
+// Phase 23/24/25 Updates
 struct semantic_ecosystem {
     struct ecosystem_identity identity;
     enum ecological_species species;
@@ -586,6 +633,7 @@ struct semantic_ecosystem {
     float regenerative_stability;
     bool semi_autonomous;
     bool parasitic;
+    struct mimicry_cost mimicry_burden;
 };
 
 struct debt_regeneration {
@@ -615,9 +663,10 @@ struct evolutionary_drift {
     float attractor_mutation_rate;
     float coherence_preservation;
     
-    // Phase 24
+    // Phase 24/25
     struct teleological_alignment teleology;
-    struct teleological_gradient intent;
+    struct utility_persistence utility;
+    struct hidden_optimization_gradient hidden_opt;
     struct teleological_anchor anchor;
 };
 

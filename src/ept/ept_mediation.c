@@ -96,6 +96,14 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
         ev->semantic_energy = energy;
         ev->survivability = surv_class;
         ev->flags = (is_write ? 1 : 0) | (is_exec ? 2 : 0) | (has_cap ? 4 : 0);
+        ev->fence_type = FENCE_NONE;
+        
+        // Stage 2B: Local Causal Clustering Hash
+        ev->causal_id = rotl64(ev->cr3, 17) ^
+                        rotl64(ev->rip, 31) ^
+                        rotl64(ev->local_epoch, 7) ^
+                        rotl64(ev->vcpu_id, 13) ^
+                        ev->event_type;
         
         atomic_store_explicit(&ring->tail, (tail + 1) % SENSOR_RING_SIZE, memory_order_release);
         

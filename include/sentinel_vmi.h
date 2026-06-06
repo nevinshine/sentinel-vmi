@@ -9,6 +9,13 @@
 #include <stdatomic.h>
 
 // ──────────────────────────────────────────────
+// Stage 2B: Distributed Causality Utilities
+// ──────────────────────────────────────────────
+static inline uint64_t rotl64(uint64_t x, int k) {
+    return (x << k) | (x >> (64 - k));
+}
+
+// ──────────────────────────────────────────────
 // Stage 1: Fast-Path Sensor Dataplane
 // ──────────────────────────────────────────────
 
@@ -20,7 +27,20 @@ enum semantic_event_type {
     EV_CONSERVATION_BREAK = 1,
     EV_CURVATURE_SPIKE = 2,
     EV_ALIGNMENT_DIVERGENCE = 3,
-    EV_RESOURCE_ASYMMETRY = 4
+    EV_RESOURCE_ASYMMETRY = 4,
+    EV_SEMANTIC_FENCE = 5,
+    EV_MIGRATION = 6
+};
+
+enum semantic_fence_type {
+    FENCE_NONE = 0,
+    FENCE_EXEC,
+    FENCE_NAMESPACE,
+    FENCE_CAPABILITY,
+    FENCE_PTRACE,
+    FENCE_BPF_ATTACH,
+    FENCE_MIGRATION,
+    FENCE_CGROUP
 };
 
 enum survivability_class {
@@ -30,17 +50,29 @@ enum survivability_class {
     SURVIVE_DISCARDABLE
 };
 
+struct migration_event {
+    uint32_t old_vcpu;
+    uint32_t new_vcpu;
+    uint64_t parent_causal_id;
+    uint64_t child_causal_id;
+};
+
 // Fixed-size, branch-light fast-path event
 struct semantic_event {
     uint64_t cr3;
     uint64_t rip;
     uint64_t local_epoch;
+    uint64_t causal_id;
     uint32_t vcpu_id;
     uint32_t event_type;
     uint32_t semantic_energy;
     uint32_t survivability; // enum survivability_class
     uint32_t flags;
-    uint32_t pad;
+    uint32_t fence_type;    // enum semantic_fence_type
+    union {
+        uint64_t payload[3];
+        struct migration_event migration;
+    };
 };
 
 // Lock-free SPSC queue per vCPU (64-byte cacheline padded)
@@ -56,6 +88,24 @@ struct sensor_ring {
 
     struct semantic_event entries[SENSOR_RING_SIZE];
 } __attribute__((aligned(64)));
+
+// ──────────────────────────────────────────────
+// Stage 2B: Distributed Semantic Topologies
+// ──────────────────────────────────────────────
+
+struct collapsed_orphan_summary {
+    uint32_t orphan_count;
+    uint32_t dominant_transition;
+    uint32_t entropy_signature;
+    uint32_t collapse_reason;
+};
+
+struct coherence_zone {
+    uint64_t namespace_id;
+    uint64_t cgroup_id;
+    uint32_t active_vcpus_mask;
+    float baseline_temperature;
+};
 
 // ──────────────────────────────────────────────
 // VMI Session — KVM introspection state

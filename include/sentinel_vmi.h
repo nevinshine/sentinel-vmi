@@ -113,6 +113,10 @@ struct stability_basin {
     float equilibrium_radius;
     float recovery_probability;
     enum attractor_type attractor;
+    
+    // Phase 21
+    bool metastable;
+    float metastability_margin;
 };
 
 struct observer_effect {
@@ -122,6 +126,9 @@ struct observer_effect {
     float authority_displacement;
     float namespace_disruption;
     bool observer_dominating;
+    
+    // Phase 21
+    float observer_energy_integral;
 };
 
 struct stability_gradient {
@@ -147,13 +154,46 @@ struct semantic_trajectory {
     float projection_confidence;
 };
 
-// Phase 20: Autonomous Equilibrium Steering
+// Phase 20/21: Autonomous Equilibrium Steering & Phase Mechanics
 enum semantic_phase {
     PHASE_ORDERED,
     PHASE_META_STABLE,
     PHASE_TRANSITIONAL,
     PHASE_TURBULENT,
     PHASE_COLLAPSED
+};
+
+struct phase_transition {
+    enum semantic_phase prev;
+    enum semantic_phase next;
+    uint64_t dwell_epochs;
+    float transition_energy;
+};
+
+struct semantic_compressibility {
+    float authority_compressibility;
+    float namespace_compressibility;
+    float execution_compressibility;
+};
+
+struct topology_fingerprint {
+    float curvature;
+    float shear;
+    float flux;
+    float entropy;
+    float resonance;
+};
+
+struct criticality_field {
+    float local_criticality;
+    float propagation_criticality;
+    float collapse_sensitivity;
+};
+
+struct criticality_cascade {
+    float cascade_probability;
+    uint64_t projected_propagation_depth;
+    bool self_amplifying;
 };
 
 struct topology_scar {
@@ -171,12 +211,13 @@ struct semantic_friction {
 struct basin_coupling {
     uint64_t source_basin;
     uint64_t target_basin;
-    float coupling_strength;
+    float upstream_influence;
+    float downstream_influence;
     float propagation_risk;
 };
 
 struct stabilization_memory {
-    uint64_t intervention_hash;
+    struct topology_fingerprint fingerprint;
     float historical_gain;
     float historical_distortion;
     bool destabilizing_pattern;
@@ -290,6 +331,10 @@ struct local_basin {
     float local_flux;
     bool isolated;
     bool repairable;
+    
+    // Phase 21
+    bool metastable;
+    float metastability_margin;
 };
 
 
@@ -326,6 +371,13 @@ struct semantic_field {
     struct local_basin active_basin;
     struct basin_coupling local_coupling;
     struct stabilization_memory control_memory;
+    
+    // Phase 21
+    struct phase_transition phase_state;
+    struct semantic_compressibility compressibility;
+    struct criticality_field criticality;
+    struct criticality_cascade criticality_cascade;
+    float phase_energy;
     
     enum semantic_phase phase;
     

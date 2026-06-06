@@ -137,6 +137,7 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
                     decision.confidence = 0.99f;
                     decision.reason = "Phase 20 Semantic Control Fast-Path (Trust Collapse)";
                     s->field.observer.intervention_disruption += 10.0f;
+                    s->field.observer.observer_energy_integral += 10.0f; // Phase 21
                 } else {
                     // It immediately enforces localized policy (PF injection) to preserve zero-latency.
                     decision.action = MEDIATE_INJECT_PF;
@@ -144,6 +145,7 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
                     decision.confidence = 0.99f;
                     decision.reason = "Phase 20 Semantic Control Fast-Path (Authority Failure)";
                     s->field.observer.intervention_disruption += 0.5f;
+                    s->field.observer.observer_energy_integral += 0.5f; // Phase 21
                 }
                 
                 // Track if Sentinel is dominating the field flux
@@ -182,10 +184,12 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
                 decision.action = MEDIATE_FREEZE;
                 decision.scope = SCOPE_VM;
                 s->field.observer.intervention_disruption += 10.0f;
+                s->field.observer.observer_energy_integral += 10.0f; // Phase 21
             } else {
                 decision.action = MEDIATE_INJECT_PF;
                 decision.scope = SCOPE_VCPU;
                 s->field.observer.intervention_disruption += 1.0f;
+                s->field.observer.observer_energy_integral += 1.0f; // Phase 21
             }
             decision.confidence = 0.95f;
             decision.reason = "Immutable core region write contract violated";

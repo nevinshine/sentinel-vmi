@@ -395,6 +395,18 @@ sentinel-vmi/
 - Dynamically classifies attractors using topological scars, allowing Sentinel to differentiate `ATTRACTOR_HEALTHY` stability from `ATTRACTOR_PARASITIC` (a stable rootkit) via causal conservation ancestry.
 
 </details>
+
+<details>
+<summary><b>Phase 21: Semantic Phase Mechanics & Criticality</b> — Macroscopic topology physics</summary>
+
+- Elevates Sentinel into a true macroscopic runtime ecology regulator, introducing topological **Phase Mechanics** and **Criticality Cascades**.
+- Prevents structural oscillation via **Phase Transition Hysteresis**, bridging dynamical stability boundaries (`PHASE_ORDERED` -> `PHASE_TURBULENT`) mathematically without heuristic chatter.
+- Tracks **Observer Energy Integral** using temporal decay, definitively bounding arbitrary regulatory intervention when natural recovery is impossible, preventing infinite observer-poisoning.
+- Introduces **Semantic Compressibility** as a field-response property, allowing Sentinel to differentiate between rigid, highly-coupled systems and naturally elastic, uncoupled topologies.
+- Replaces naive stabilization memory with geometrically weighted **Topology Fingerprints**, preventing historically destructive interventions based on the shape of the mathematical collapse rather than the action type.
+- Formally isolates the concept of mathematical **Trust Collapse** from deterministic **Topology Reconfiguration**, laying the foundation for autonomous resilience.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

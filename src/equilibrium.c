@@ -45,6 +45,28 @@ static void update_ecosystem_boundaries(struct vmi_session *s) {
     }
 }
 
+// Phase 24: Teleological Alignment Inference
+static void evaluate_teleological_drift(struct vmi_session *s) {
+    struct teleological_anchor *anchor = &s->field.evolution.anchor;
+    
+    // Compare expected drift against observed drift across alignment axes
+    float d_coherence = anchor->observed_drift.coherence_alignment - anchor->expected_drift.coherence_alignment;
+    float d_conservation = anchor->observed_drift.conservation_alignment - anchor->expected_drift.conservation_alignment;
+    float d_authority = anchor->observed_drift.authority_alignment - anchor->expected_drift.authority_alignment;
+    
+    // Trajectory-relative residual
+    anchor->teleological_residual = (d_coherence * d_coherence) + (d_conservation * d_conservation) + (2.0f * d_authority * d_authority);
+    
+    // Infer Teleological Gradient Intent (Asymmetric parasitism vs healthy adaptation)
+    if (anchor->teleological_residual > 5.0f && d_authority < -0.5f && d_coherence > 0.5f) {
+        // Highly coherent but drifting away from legitimate authority lineage -> Parasitic Concealment
+        s->field.evolution.intent.concealment_optimization = anchor->teleological_residual;
+        s->field.evolution.intent.ecological_parasitism = 1.0f;
+    } else {
+        s->field.evolution.intent.ecological_parasitism = 0.0f;
+    }
+}
+
 // Phase 21: Semantic Phase Mechanics & Criticality
 static void calculate_compressibility(struct vmi_session *s) {
     float elasticity = s->field.elasticity.recovery_elasticity;
@@ -82,6 +104,10 @@ static void evaluate_metastability(struct vmi_session *s) {
     if (s->field.active_basin.latent_phase_energy > s->field.active_basin.release_threshold && s->field.active_basin.release_threshold > 0.0f) {
         float discharge = s->field.active_basin.latent_phase_energy * s->field.active_basin.release_rate;
         s->field.active_basin.latent_phase_energy -= discharge;
+        
+        // Phase 24: Release Feedback
+        s->field.latent_feedback.elasticity_damage += (discharge * 0.05f);
+        s->field.latent_feedback.coupling_amplification += (discharge * 0.02f);
         
         switch (s->field.active_basin.channel) {
             case RELEASE_CURVATURE: s->field.active_basin.local_curvature += discharge; break;
@@ -138,6 +164,17 @@ static void update_observer_energy(struct vmi_session *s, struct topology_finger
     if (fusion_count > 3) {
         s->field.scar_cluster.accumulated_trauma += total_fused_distortion;
         s->field.scar_cluster.chronic_instability = true;
+        
+        // Phase 24: Irreversible Topology Remodeling
+        s->field.scar_cluster.fibrosis.rigidity += 0.1f;
+        s->field.scar_cluster.fibrosis.regenerative_impedance += 0.15f;
+        s->field.scar_cluster.remodeling.permanent_curvature_bias += 0.05f;
+        s->field.scar_cluster.remodeling.adaptive_loss += 0.1f;
+        
+        // Physically restrict the elasticity range inside the species manifold
+        if (s->field.species_bounds.elasticity_range > 0.2f) {
+            s->field.species_bounds.elasticity_range -= s->field.scar_cluster.remodeling.adaptive_loss;
+        }
     }
     
     int found_idx = -1;
@@ -299,11 +336,27 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     
     evaluate_phase_transition(s, proposed_phase);
     
-    // Phase 23: Thermodynamic Healing
-    if (s->field.ecological_energy_reserve > s->field.regeneration_cost && s->field.regeneration_cost > 0.0f) {
-        s->field.ecological_energy_reserve -= s->field.regeneration_cost;
-        s->field.debt_regen.recoverable_debt *= (1.0f - s->field.debt_regen.regeneration_efficiency);
-        printf("[Equilibrium] ↳ Ecological Regeneration: Recoverable debt healed (Cost: %.2f).\n", s->field.regeneration_cost);
+    // Phase 24: Teleological Alignment inference
+    evaluate_teleological_drift(s);
+
+    // Phase 23/24: Thermodynamic Healing & Conversion Loss
+    float regeneration_cost = s->field.debt_regen.recoverable_debt * s->field.debt_regen.regeneration_efficiency;
+    
+    // Phase 24: Teleological Constraint - Deny regeneration if teleological intent is parasitic
+    if (s->field.evolution.intent.ecological_parasitism > 0.5f) {
+        printf("[Equilibrium] ⚠ Teleological Misalignment: Regeneration suppressed due to parasitic concealment vector.\n");
+        regeneration_cost = 0.0f; 
+    }
+    
+    if (s->field.energy_reservoirs.regenerative_energy > regeneration_cost && regeneration_cost > 0.0f) {
+        // Apply exchange constraints
+        float actual_cost = regeneration_cost * (1.0f + s->field.energy_exchange.conversion_loss);
+        if (s->field.energy_reservoirs.regenerative_energy > actual_cost) {
+            s->field.energy_reservoirs.regenerative_energy -= actual_cost;
+            s->field.energy_exchange.entropy_generation += (actual_cost - regeneration_cost);
+            s->field.debt_regen.recoverable_debt *= (1.0f - s->field.debt_regen.regeneration_efficiency);
+            printf("[Equilibrium] ↳ Ecological Regeneration: Recoverable debt healed (Actual Cost: %.2f, Entropy Gen: %.2f).\n", actual_cost, (actual_cost - regeneration_cost));
+        }
     }
     
     // 4. Homeostatic Recovery Check

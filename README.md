@@ -431,6 +431,18 @@ sentinel-vmi/
 - Evolves **Topology Reconfiguration** into a full tensorial cross-coupling architecture, recognizing that adaptation, convergence, and fragmentation influence each other directionally during large-scale phase transitions.
 
 </details>
+
+<details>
+<summary><b>Phase 24: Teleological Alignment</b> — Teleological runtime evolution theory</summary>
+
+- Extends Sentinel into a true deterministic teleological evolution calculus by modeling the evolutionary directional intent of execution topologies, distinguishing healthy adaptation from highly-evolved parasitic concealment.
+- Replaces static history tracking with **Trajectory-Relative Alignment**, computing a `teleological_residual` by comparing the `observed_drift` of an ecosystem against its `expected_drift` from its `origin_epoch`, preserving replayability without unbounded state cloning.
+- Evolves semantic fibrosis into **Irreversible Topology Remodeling**, permanently clamping the `elasticity_range` of parasitic ecosystems within their `species_manifold` to gradually restrict their physical capacity to masquerade as healthy orchestrators.
+- Implements **Multi-Reservoir Ecological Energy** (Structural, Regenerative, Adaptive, Containment) and strictly limits thermodynamic transfers via `energy_exchange` constraints (conversion loss and entropy generation) to prevent non-physical "free" adaptation.
+- Prevents malicious topologies from exploiting thermodynamic healing through **Teleological Constraints**, denying regenerative energy to ecologies whose intent infers `ecological_parasitism` or `concealment_optimization`.
+- Introduces foundational structures for **Semantic Speciation** and **Ecological Bifurcation**, allowing macro-ecosystems to dynamically split, merge, and specialize while being formally governed by lineage continuity.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

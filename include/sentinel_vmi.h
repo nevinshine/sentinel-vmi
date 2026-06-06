@@ -417,9 +417,107 @@ struct local_basin {
     float metastability_margin;
 };
 
-// Phase 23
-struct semantic_ecosystem {
+// Phase 24
+struct alignment_vector {
+    float coherence_alignment;
+    float conservation_alignment;
+    float authority_alignment;
+    float ecological_alignment;
+};
+
+struct teleological_anchor {
+    uint64_t anchor_epoch;
+    struct alignment_vector expected_drift;
+    struct alignment_vector observed_drift;
+    float teleological_residual;
+};
+
+struct teleological_alignment {
+    struct alignment_vector local_alignment;
+    struct alignment_vector epoch_alignment;
+    struct alignment_vector evolutionary_alignment;
+};
+
+struct species_manifold {
+    float elasticity_range;
+    float curvature_range;
+    float regenerative_profile;
+    float authority_distribution;
+};
+
+struct topology_remodeling {
+    float permanent_curvature_bias;
+    float irreversible_fragmentation;
+    float adaptive_loss;
+};
+
+struct teleological_gradient {
+    float coherence_optimization;
+    float concealment_optimization;
+    float authority_preservation;
+    float ecological_parasitism;
+};
+
+struct energy_exchange {
+    float conversion_loss;
+    float transfer_efficiency;
+    float entropy_generation;
+};
+
+enum ecosystem_transition {
+    ECOSYSTEM_SPLIT,
+    ECOSYSTEM_MERGE,
+    ECOSYSTEM_PARASITIC_FORK,
+    ECOSYSTEM_EXTINCTION
+};
+
+enum ecological_species {
+    SPECIES_KERNEL_CORE,
+    SPECIES_ORCHESTRATION,
+    SPECIES_TRANSIENT_WORKER,
+    SPECIES_BPF_JIT,
+    SPECIES_PARASITIC_ENCLAVE,
+    SPECIES_UNDIFFERENTIATED
+};
+
+struct regenerative_signature {
+    float self_repair_bias;
+    float foreign_rejection_bias;
+    bool regenerative_asymmetry;
+};
+
+struct ecosystem_identity {
     uint64_t ecosystem_id;
+    uint64_t origin_epoch;
+    float continuity_score;
+    float mutation_distance;
+    bool lineage_preserved;
+};
+
+struct ecological_energy {
+    float structural_energy;
+    float regenerative_energy;
+    float adaptive_energy;
+    float containment_energy;
+};
+
+struct fibrosis_dynamics {
+    float rigidity;
+    float regenerative_impedance;
+    float propagation_bias;
+    bool permanently_deformed;
+};
+
+struct release_feedback {
+    float elasticity_damage;
+    float coupling_amplification;
+    float regeneration_suppression;
+};
+
+// Phase 23/24 Updates
+struct semantic_ecosystem {
+    struct ecosystem_identity identity;
+    enum ecological_species species;
     float internal_coherence;
     float external_coupling;
     float ecological_pressure;
@@ -444,15 +542,25 @@ struct scar_cluster {
     float accumulated_trauma;
     float topology_fragility;
     bool chronic_instability;
+    
+    // Phase 24
+    struct fibrosis_dynamics fibrosis;
+    struct topology_remodeling remodeling;
 };
 
 struct evolutionary_drift {
     float topology_divergence_rate;
     float attractor_mutation_rate;
     float coherence_preservation;
+    
+    // Phase 24
+    struct teleological_alignment teleology;
+    struct teleological_gradient intent;
+    struct teleological_anchor anchor;
 };
 
 struct regenerative_capacity {
+    struct regenerative_signature signature;
     float topology_repair_rate;
     float authority_recovery_rate;
     float compartmentalization_gain;
@@ -507,8 +615,13 @@ struct semantic_field {
     // Phase 23
     struct reconfiguration_tensor reconfig_tensor;
     struct debt_regeneration debt_regen;
-    float regeneration_cost;
-    float ecological_energy_reserve;
+    // Phase 24
+    struct ecological_energy energy_reservoirs;
+    struct energy_exchange energy_exchange;
+    struct release_feedback latent_feedback;
+    struct species_manifold species_bounds;
+    enum ecosystem_transition eco_transition;
+    
     struct regenerative_capacity regeneration;
     struct semantic_ecosystem ecosystem;
     struct scar_cluster scar_cluster;

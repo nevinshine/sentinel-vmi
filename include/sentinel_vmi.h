@@ -6,6 +6,43 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
+#include <stdatomic.h>
+
+// ──────────────────────────────────────────────
+// Stage 1: Fast-Path Sensor Dataplane
+// ──────────────────────────────────────────────
+
+#define SEMANTIC_FP_SHIFT 10
+#define SEMANTIC_FP_SCALE (1 << SEMANTIC_FP_SHIFT)
+#define SENSOR_RING_SIZE 4096
+
+enum semantic_event_type {
+    EV_CONSERVATION_BREAK = 1,
+    EV_CURVATURE_SPIKE = 2,
+    EV_ALIGNMENT_DIVERGENCE = 3,
+    EV_RESOURCE_ASYMMETRY = 4
+};
+
+// Fixed-size, branch-light fast-path event
+struct semantic_event {
+    uint64_t cr3;
+    uint64_t rip;
+    uint32_t event_type;
+    uint32_t semantic_energy;
+    uint32_t flags;
+    uint32_t pad;
+};
+
+// Lock-free SPSC queue per vCPU (64-byte cacheline padded)
+struct sensor_ring {
+    _Atomic uint32_t head;
+    char pad1[60];
+
+    _Atomic uint32_t tail;
+    char pad2[60];
+
+    struct semantic_event entries[SENSOR_RING_SIZE];
+} __attribute__((aligned(64)));
 
 // ──────────────────────────────────────────────
 // VMI Session — KVM introspection state
@@ -961,6 +998,9 @@ struct vmi_session {
   struct authority_transition *authority_log;
   size_t nr_authority_transitions;
   size_t authority_capacity;
+  
+  // Stage 1: Fast-Path Per-vCPU Rings
+  struct sensor_ring *vcpu_rings;
 };
 
 // ──────────────────────────────────────────────

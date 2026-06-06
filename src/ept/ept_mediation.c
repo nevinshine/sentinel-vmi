@@ -16,189 +16,67 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
     decision.confidence = 0.0f;
     decision.reason = "Nominal transition";
     
-    printf("[Mediation] ═══════════════════════════════════════\n");
-    printf("[Mediation] Evaluating EPT Violation at GPA 0x%lx (GVA 0x%lx)\n", gpa, gva);
-    printf("[Mediation] Access type: %s %s\n", is_write ? "WRITE" : "", is_exec ? "EXEC" : "");
-    printf("[Mediation] Current Semantic Inertia: %.2f (Temp: %.2f)\n", s->field.inertia.topology_resistance, s->field.semantic_temperature);
-    
-    // 0. Semantic Actor Reconstruction (Phase 13)
+    // 0. Resolve Actor (Best Effort, Lock-Free if possible)
     struct semantic_actor *actor = NULL;
-    if (task_walker_reconstruct_actor(s, raw_cr3, rip, vcpu_id, &actor) == 0 && actor != NULL) {
-        printf("[Mediation] ↳ Actor Identity: PID %u (%s) | Domain: %s\n", actor->identity.pid, actor->comm, 
-            actor->domain == ACTOR_KERNEL ? "KERNEL" : "USERSPACE");
-        if (actor->is_kthread) {
-            printf("[Mediation] ↳ Execution Lineage: Kernel Thread (borrowed active_mm: 0x%lx)\n", actor->active_mm);
-        }
-    } else {
-        printf("[Mediation] ⚠ Failed to reconstruct semantic actor for CR3 0x%lx\n", raw_cr3);
-    }
-
-    // 1. Resolve Region
+    task_walker_reconstruct_actor(s, raw_cr3, rip, vcpu_id, &actor);
+    
+    // 1. Resolve Region & Symbol (Use gpa to avoid unused warning)
+    (void)gpa;
     const struct memory_region *target_region = vmi_find_region(s, gva);
     if (!target_region) {
-        printf("[Mediation] ⚠ Unknown Region Target\n");
         decision.action = MEDIATE_TRAP;
         decision.scope = SCOPE_VCPU;
-        decision.confidence = 0.85f;
         decision.reason = "Write to unknown semantic region";
         return decision;
     }
     
-    // 2. Resolve Symbol
     uint64_t offset = 0;
     const struct symbol *sym = symbol_reverse_resolve(syms, gva, &offset);
     
-    printf("[Mediation] ↳ Target Region: %s\n", target_region->name);
-    if (sym) {
-        printf("[Mediation] ↳ Target Symbol: %s + 0x%lx\n", sym->name, offset);
+    // 2. Compute Fast-Path Semantic Energy (Integer Only)
+    bool has_cap = actor && (actor->authority.capabilities & CAP_KERNEL_MODIFY);
+    uint32_t energy = 0;
+    
+    if (is_write && (target_region->type == REGION_CORE_TEXT || target_region->type == REGION_CORE_RODATA)) {
+        energy += (1 << 8); // Conservation Break
+        if (sym && strcmp(sym->name, "sys_call_table") == 0) {
+            energy += (1 << 10); // Major structural anomaly
+            if (!has_cap) {
+                energy += (1 << 12); // Authority break
+            }
+        }
     }
     
-    // 3. Teleological Enforcement based on Contract
-    if (is_write) {
-        if (target_region->type == REGION_CORE_TEXT || target_region->type == REGION_CORE_RODATA) {
+    // 3. Lossy Compression (Semantic Forgetting)
+    // If energy is 0 or below epsilon, we forget it entirely. It never enters the ring.
+    if (energy > 0) {
+        // Enqueue to Stage 1 Fast-Path Ring
+        if (s->vcpu_rings && s->nr_vcpus > 0) {
+            struct sensor_ring *ring = &s->vcpu_rings[vcpu_id % s->nr_vcpus];
+            uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+            uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
             
-            // First Target Lockdown: sys_call_table
-            if (sym && strcmp(sym->name, "sys_call_table") == 0) {
-                printf("[Mediation] ⚠ ANOMALY: Write attempt to sys_call_table!\n");
+            if ((tail + 1) % SENSOR_RING_SIZE != head) {
+                struct semantic_event *ev = &ring->entries[tail];
+                ev->cr3 = raw_cr3;
+                ev->rip = rip;
+                ev->event_type = EV_CONSERVATION_BREAK;
+                ev->semantic_energy = energy;
+                ev->flags = (is_write ? 1 : 0) | (is_exec ? 2 : 0) | (has_cap ? 4 : 0);
                 
-                // Evaluate Teleological Authority Continuity
-                bool has_cap = actor && (actor->authority.capabilities & CAP_KERNEL_MODIFY);
-                float composite_legitimacy = 0.0f;
-                if (actor) {
-                    composite_legitimacy = (actor->authority.legitimacy.structural + actor->authority.legitimacy.provenance) / 2.0f;
-                }
-                
-                if (has_cap && composite_legitimacy >= 0.8f) {
-                    // This is legitimately impossible unless we implement trusted dynamic kernel loading,
-                    // but it demonstrates the authority calculus correctly.
-                    printf("[Mediation] ↳ Authority valid. Actor possesses CAP_KERNEL_MODIFY and legitimacy %.2f >= 0.80.\n", composite_legitimacy);
-                    decision.action = MEDIATE_ALLOW;
-                    return decision;
-                }
-                
-                printf("[Mediation] ⚠ AUTHORITY DRIFT: Actor lacks valid CAP_KERNEL_MODIFY continuity!\n");
-                
-                // Decay Authority Legitimacy
-                if (actor) {
-                    actor->authority.legitimacy.structural *= 0.1f; // Massive collapse
-                    actor->authority.legitimacy.behavioral *= 0.5f;
-                    
-                    enum authority_state prev = actor->authority.state;
-                    actor->authority.state = AUTHORITY_REVOKED;
-                    
-                    // Log the Authority Transition
-                    struct authority_transition at = {0};
-                    at.id = (uint64_t)time(NULL) ^ (actor->identity.pid << 16) ^ 0xBEEF;
-                    at.semantic_epoch = s->semantic_epoch;
-                    at.actor = actor->identity;
-                    at.capabilities_revoked = CAP_KERNEL_MODIFY | CAP_EXEC_TRANSFORM;
-                    at.vector_delta.structural = -0.9f;
-                    at.prev_state = prev;
-                    at.next_state = actor->authority.state;
-                    vmi_log_authority_transition(s, &at);
-                    
-                    actor->authority.capabilities &= ~at.capabilities_revoked;
-                }
-                
-                // Apply exponential debt decay to integrity dimension
-                float old_integrity_debt = 0.0f;
-                float integrity = 0.0f;
-                float momentum = 0.0f;
-                if (actor) {
-                    old_integrity_debt = actor->debt.integrity;
-                    actor->debt.integrity = actor->debt.integrity * DEBT_DECAY_FACTOR + (-TRUST_DELTA_SYSCALL_DRIFT);
-                    actor->semantic_momentum = actor->debt.integrity - old_integrity_debt;
-                    integrity = actor->debt.integrity;
-                    momentum = actor->semantic_momentum;
-                }
-                
-                printf("[Mediation] ↳ Semantic Debt (Integrity) increased to %.2f (Momentum: %+.2f)\n", integrity, momentum);
-                // Thermodynamic Update
-                s->field.legitimacy.structural *= 0.5f;
-                s->field.capability_pressure += 1.0f;
-                s->field.semantic_temperature += 0.5f;
-                s->field.momentum.legitimacy_acceleration -= 0.5f;
-                
-                if (s->field.momentum.legitimacy_acceleration <= -1.0f) {
-                    s->field.collapse_hysteresis += 1.0f;
-                }
-                
-                vmi_calculate_thermodynamics(s);
-                vmi_project_trajectory(s);
-                
-                // Phase 20: Fast Path Tensor Update
-                s->field.shear.authority_shear += 1.5f;
-                s->field.friction.authority_friction += 0.2f;
-                
-                // We no longer run vmi_simulate_intervention() here. This is the fast path.
-                if (s->field.closure_state == FIELD_COLLAPSING || s->field.closure_state == FIELD_IRRECOVERABLE || s->field.collapse_hysteresis >= 3.0f) {
-                    decision.action = MEDIATE_FREEZE;
-                    decision.scope = SCOPE_VM;
-                    decision.confidence = 0.99f;
-                    decision.reason = "Phase 20 Semantic Control Fast-Path (Trust Collapse)";
-                    s->field.observer.intervention_disruption += 10.0f;
-                    s->field.observer.observer_energy_integral += 10.0f; // Phase 21
-                } else {
-                    // It immediately enforces localized policy (PF injection) to preserve zero-latency.
-                    decision.action = MEDIATE_INJECT_PF;
-                    decision.scope = SCOPE_VCPU;
-                    decision.confidence = 0.99f;
-                    decision.reason = "Phase 20 Semantic Control Fast-Path (Authority Failure)";
-                    s->field.observer.intervention_disruption += 0.5f;
-                    s->field.observer.observer_energy_integral += 0.5f; // Phase 21
-                }
-                
-                // Track if Sentinel is dominating the field flux
-                if (s->field.observer.intervention_disruption > s->field.trajectory.escape_velocity) {
-                    s->field.observer.observer_dominating = true;
-                } else {
-                    s->field.observer.observer_dominating = false;
-                }
-                
-                printf("[Mediation] ↳ Policy Decision: %s (Scope: %d, Confidence: %.2f)\n", 
-                        decision.action == MEDIATE_FREEZE ? "MEDIATE_FREEZE" : "MEDIATE_INJECT_PF", 
-                        decision.scope, decision.confidence);
-                return decision;
+                atomic_store_explicit(&ring->tail, (tail + 1) % SENSOR_RING_SIZE, memory_order_release);
             }
-            
-            // General CORE_TEXT/CORE_RODATA violation
-            printf("[Mediation] ⚠ ANOMALY: Write attempt to immutable region %s\n", target_region->name);
-            s->field.legitimacy.structural *= 0.1f;
-            s->field.semantic_temperature += 1.0f;
-            s->field.momentum.legitimacy_acceleration -= 1.0f;
-            
-            if (s->field.momentum.legitimacy_acceleration <= -1.0f) {
-                s->field.collapse_hysteresis += 1.0f;
-            }
-            
-            printf("[Mediation] ↳ Temperature increased to %.2f (Acceleration: %.2f)\n", s->field.semantic_temperature, s->field.momentum.legitimacy_acceleration);
-            
-            vmi_calculate_thermodynamics(s);
-            vmi_project_trajectory(s);
-            
-            // Phase 20: Fast Path Tensor Update
-            s->field.shear.execution_shear += 2.0f;
-            s->field.friction.execution_friction += 0.5f;
-            
-            if (s->field.closure_state == FIELD_COLLAPSING || s->field.closure_state == FIELD_IRRECOVERABLE || s->field.collapse_hysteresis >= 3.0f) {
-                decision.action = MEDIATE_FREEZE;
-                decision.scope = SCOPE_VM;
-                s->field.observer.intervention_disruption += 10.0f;
-                s->field.observer.observer_energy_integral += 10.0f; // Phase 21
-            } else {
-                decision.action = MEDIATE_INJECT_PF;
-                decision.scope = SCOPE_VCPU;
-                s->field.observer.intervention_disruption += 1.0f;
-                s->field.observer.observer_energy_integral += 1.0f; // Phase 21
-            }
-            decision.confidence = 0.95f;
-            decision.reason = "Immutable core region write contract violated";
-            
-            printf("[Mediation] ↳ Policy Decision: %s (Confidence: %.2f)\n", decision.action == MEDIATE_FREEZE ? "MEDIATE_FREEZE" : "MEDIATE_INJECT_PF", decision.confidence);
+        }
+        
+        // Immediate deterministic mitigation in fast-path
+        if (energy > (1 << 10)) {
+            decision.action = MEDIATE_INJECT_PF;
+            decision.scope = SCOPE_VCPU;
+            decision.reason = "High energy semantic anomaly (Fast-Path reject)";
+            decision.confidence = 0.99f;
             return decision;
         }
     }
     
-    printf("[Mediation] ✓ Nominal behavior. Policy Decision: MEDIATE_ALLOW\n");
     return decision;
 }

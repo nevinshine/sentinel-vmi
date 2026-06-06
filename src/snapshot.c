@@ -302,7 +302,7 @@ struct vmi_session *vmi_session_from_snapshot(const char *bin_path,
   memset(&s->field.stab_gradient, 0, sizeof(s->field.stab_gradient));
   memset(&s->field.shear, 0, sizeof(s->field.shear));
   
-  s->field.anticipated_collapse = COLLAPSE_NONE;
+  s->field.anticipated_collapse = COLLAPSE_STATE_NONE;
   s->field.basin.attractor = ATTRACTOR_HEALTHY;
   
   s->field.current_epoch = 1;

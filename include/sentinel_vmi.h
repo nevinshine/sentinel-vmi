@@ -101,10 +101,54 @@ struct collapsed_orphan_summary {
 };
 
 struct coherence_zone {
+    uint32_t owning_numa;
+    uint64_t dominant_cr3;
+    uint64_t locality_score;
     uint64_t namespace_id;
     uint64_t cgroup_id;
     uint32_t active_vcpus_mask;
     float baseline_temperature;
+};
+
+// ──────────────────────────────────────────────
+// Stage 2C: Runtime Survivability & Economics
+// ──────────────────────────────────────────────
+
+struct pressure_state {
+    uint32_t saturation_velocity;
+    uint32_t saturation_acceleration;
+    uint32_t orphan_velocity;
+    uint32_t orphan_acceleration;
+    uint32_t reconstruction_lag;
+};
+
+struct observability_budget {
+    uint32_t reconstruction_cycles;
+    uint32_t memory_budget;
+    uint32_t orphan_budget;
+    uint32_t ambiguity_budget;
+};
+
+struct starvation_tracker {
+    uint64_t last_reconstruction_epoch;
+    uint32_t starvation_score;
+};
+
+enum collapse_mode {
+    COLLAPSE_NONE = 0,
+    COLLAPSE_MEMORY,
+    COLLAPSE_AMBIGUITY,
+    COLLAPSE_ORPHAN,
+    COLLAPSE_LATENCY,
+    COLLAPSE_RECONSTRUCTION
+};
+
+struct numa_zone {
+    uint32_t numa_id;
+    struct sensor_ring *local_rings; // Pointers or indices to rings on this node
+    uint32_t nr_rings;
+    struct pressure_state pressure;
+    struct observability_budget budget;
 };
 
 // ──────────────────────────────────────────────
@@ -165,12 +209,12 @@ struct pressure_gradient {
 };
 
 // Phase 18: Predictive Semantic Collapse
-enum collapse_mode {
-    COLLAPSE_NONE,
-    COLLAPSE_LOCALIZED,
-    COLLAPSE_PROPAGATING,
-    COLLAPSE_CASCADING,
-    COLLAPSE_IRREVERSIBLE
+enum semantic_collapse_state {
+    COLLAPSE_STATE_NONE,
+    COLLAPSE_STATE_LOCALIZED,
+    COLLAPSE_STATE_PROPAGATING,
+    COLLAPSE_STATE_CASCADING,
+    COLLAPSE_STATE_IRREVERSIBLE
 };
 
 enum reachability_state {
@@ -998,7 +1042,7 @@ struct semantic_field {
     uint64_t active_authorities;
     uint64_t quarantined_authorities;
     
-    enum collapse_mode anticipated_collapse;
+    enum semantic_collapse_state anticipated_collapse;
     
     uint64_t current_epoch;
     uint64_t coherence_epoch;
@@ -1067,6 +1111,13 @@ struct vmi_session {
   
   // Stage 2A: Semantic Epoch Decoupling
   uint64_t vcpu_epochs[VMI_MAX_VCPUS];
+  
+  // Stage 2C: NUMA Zones and Semantic Debt
+  struct numa_zone *numa_zones;
+  uint32_t nr_numa_zones;
+  uint32_t semantic_debt;
+  struct starvation_tracker starvation;
+  enum collapse_mode active_collapse;
 };
 
 // ──────────────────────────────────────────────

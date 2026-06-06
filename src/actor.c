@@ -202,13 +202,13 @@ void vmi_project_trajectory(struct vmi_session *s) {
     // 4. Counterfactual Reachability
     if (s->field.trajectory.trajectory_curvature > 0.5f && s->field.constraints.max_projection_epochs < 10) {
         s->field.boundaries.reachability = REACHABILITY_INEVITABLE;
-        s->field.anticipated_collapse = COLLAPSE_CASCADING;
+        s->field.anticipated_collapse = COLLAPSE_STATE_CASCADING;
     } else if (s->field.trajectory.divergence_velocity > 1.0f) {
         s->field.boundaries.reachability = REACHABILITY_PROBABLE;
-        s->field.anticipated_collapse = COLLAPSE_PROPAGATING;
+        s->field.anticipated_collapse = COLLAPSE_STATE_PROPAGATING;
     } else {
         s->field.boundaries.reachability = REACHABILITY_CONSTRAINED;
-        s->field.anticipated_collapse = COLLAPSE_NONE;
+        s->field.anticipated_collapse = COLLAPSE_STATE_NONE;
     }
     
     // 5. Basin of Stability

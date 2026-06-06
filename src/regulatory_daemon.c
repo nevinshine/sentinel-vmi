@@ -3,99 +3,90 @@
 #include <unistd.h>
 #include <stdatomic.h>
 
-struct causal_window {
-    uint64_t max_window_ns;
-    uint32_t max_events;
-    uint32_t max_orphans;
-    
-    uint32_t current_events;
-    uint32_t current_orphans;
-};
-
 // ──────────────────────────────────────────────
-// Stage 2B: Distributed Semantic Topology Stitcher
+// Stage 2C: Adaptive Semantic Scheduler
 // ──────────────────────────────────────────────
 void regulatory_daemon_loop(struct vmi_session *s) {
-    if (!s->vcpu_rings || s->nr_vcpus <= 0) return;
+    if (!s->numa_zones || s->nr_numa_zones <= 0) return;
     
-    printf("[RegulatoryDaemon] Starting bounded probabilistic ecological reconstruction...\n");
-    
-    struct causal_window window = {
-        .max_window_ns = 5000000, // 5ms
-        .max_events = 2048,
-        .max_orphans = 256,
-        .current_events = 0,
-        .current_orphans = 0
-    };
+    printf("[RegulatoryDaemon] Starting adaptive semantic scheduling (NUMA-aware)...\n");
     
     bool events_processed = false;
     
-    for (int i = 0; i < s->nr_vcpus; i++) {
-        struct sensor_ring *ring = &s->vcpu_rings[i];
+    // Process intra-NUMA rings sequentially (NUMA-aware scheduling)
+    for (uint32_t nz = 0; nz < s->nr_numa_zones; nz++) {
+        struct numa_zone *zone = &s->numa_zones[nz];
         
-        // Hysteretic Epsilon Decay (Daemon acts as congestion controller)
-        uint32_t current_eps = atomic_load_explicit(&ring->dynamic_epsilon, memory_order_relaxed);
-        if (current_eps > 0) {
-            // Decay slowly compared to fast-path burst increments
-            uint32_t new_eps = current_eps > 4 ? current_eps - 4 : 0;
-            atomic_store_explicit(&ring->dynamic_epsilon, new_eps, memory_order_relaxed);
+        // Skip zone if it's completely collapsed and we need to shed load
+        if (s->active_collapse == COLLAPSE_RECONSTRUCTION && zone->budget.reconstruction_cycles == 0) {
+            continue;
         }
         
-        uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
-        uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
-        
-        while (head != tail) {
-            events_processed = true;
-            struct semantic_event *ev = &ring->entries[head];
+        for (uint32_t i = 0; i < zone->nr_rings; i++) {
+            struct sensor_ring *ring = &zone->local_rings[i];
             
-            // 1. Stage 2B: Bounded Causality Projection
-            float confidence = 1.0f;
-            
-            // Evolve confidence based on semantic anchors
-            if (ev->fence_type != FENCE_NONE) {
-                // Semantic Fences contract ambiguity (Certainty approaches 1.0)
-                confidence = 0.99f;
-            } else {
-                // Weakly ordered events accumulate entropy (Confidence decays)
-                confidence *= 0.85f; // Geometric decay for unanchored transitions
+            // Hysteretic Epsilon Decay (Daemon acts as congestion controller)
+            uint32_t current_eps = atomic_load_explicit(&ring->dynamic_epsilon, memory_order_relaxed);
+            if (current_eps > 0) {
+                // Decay slowly compared to fast-path burst increments
+                uint32_t new_eps = current_eps > 4 ? current_eps - 4 : 0;
+                atomic_store_explicit(&ring->dynamic_epsilon, new_eps, memory_order_relaxed);
             }
             
-            // Check Hybrid Bounding Limits
-            window.current_events++;
-            if (ev->causal_id % 7 == 0) { // Mocking probabilistic orphan detection
-                window.current_orphans++;
+            uint32_t head = atomic_load_explicit(&ring->head, memory_order_relaxed);
+            uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
+            
+            while (head != tail) {
+                events_processed = true;
+                struct semantic_event *ev = &ring->entries[head];
+                
+                // 1. Evaluate Starvation & Budget Before Reconstruction
+                if (zone->budget.reconstruction_cycles == 0) {
+                    s->starvation.starvation_score += 10;
+                    s->semantic_debt += 5; // We threw away events
+                    
+                    if (s->starvation.starvation_score > 1000) {
+                        s->active_collapse = COLLAPSE_RECONSTRUCTION;
+                    }
+                    
+                    // Tail drop at consumer
+                    head = (head + 1) % SENSOR_RING_SIZE;
+                    atomic_store_explicit(&ring->head, head, memory_order_release);
+                    continue;
+                }
+                
+                // 2. Compute Nonlinear Reconstruction Cost
+                uint32_t base_cost = 10;
+                uint32_t crossings = 0; // Mock: 0 if local ring, >0 if cross-ring causality
+                uint32_t orphan_depth = (ev->causal_id % 7 == 0) ? 2 : 0;
+                float confidence_penalty = 1.0f; // Mock
+                
+                uint32_t cost = base_cost * (1 + crossings * crossings) * (1 + orphan_depth * orphan_depth) * confidence_penalty;
+                
+                // 3. Deduct from Observability Budget
+                if (zone->budget.reconstruction_cycles >= cost) {
+                    zone->budget.reconstruction_cycles -= cost;
+                } else {
+                    zone->budget.reconstruction_cycles = 0;
+                }
+                
+                // 4. Update Pressure States
+                zone->pressure.saturation_velocity++; // simplified
+                
+                printf("[RegulatoryDaemon] Reconstructing edge [Cost: %u]: vCPU %u, CausalID 0x%lx\n",
+                       cost, ev->vcpu_id, ev->causal_id);
+                
+                // 5. Advance the SPSC consumer head
+                head = (head + 1) % SENSOR_RING_SIZE;
+                atomic_store_explicit(&ring->head, head, memory_order_release);
+                
+                tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
             }
-            
-            printf("[RegulatoryDaemon] Reconstructing causal edge: vCPU %u, CausalID 0x%lx, Confidence %.2f\n",
-                   ev->vcpu_id, ev->causal_id, confidence);
-            
-            if (window.current_events >= window.max_events || window.current_orphans >= window.max_orphans) {
-                printf("[RegulatoryDaemon] ⚠ Causal Window Saturation Reached (Events: %u, Orphans: %u). Forcing Topological Flush.\n", 
-                        window.current_events, window.current_orphans);
-                
-                // Compress unresolved ambiguity
-                struct collapsed_orphan_summary summary = {
-                    .orphan_count = window.current_orphans,
-                    .dominant_transition = EV_CONSERVATION_BREAK,
-                    .entropy_signature = 0xDEADBEEF,
-                    .collapse_reason = window.current_orphans >= window.max_orphans ? 1 : 0
-                };
-                
-                printf("[RegulatoryDaemon] ↳ Compressed %u orphans into summary signature 0x%x\n", summary.orphan_count, summary.entropy_signature);
-                
-                window.current_events = 0;
-                window.current_orphans = 0;
-            }
-            
-            // 2. Advance the SPSC consumer head
-            head = (head + 1) % SENSOR_RING_SIZE;
-            atomic_store_explicit(&ring->head, head, memory_order_release);
-            
-            tail = atomic_load_explicit(&ring->tail, memory_order_acquire);
         }
     }
     
     if (events_processed) {
-        printf("[RegulatoryDaemon] Sliding window reconstruction complete.\n");
+        printf("[RegulatoryDaemon] Adaptive scheduling cycle complete. Debt: %u, Starvation: %u, Collapse: %d\n",
+               s->semantic_debt, s->starvation.starvation_score, s->active_collapse);
     }
 }

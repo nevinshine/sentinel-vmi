@@ -412,30 +412,69 @@ struct local_basin {
     float release_rate;
     enum release_channel channel;
     
+    // Pre-Phase 25
+    struct basin_entropy_state {
+        float local_entropy_floor;
+        float entropy_recovery_limit;
+        bool permanently_scarred;
+    } entropy_state;
+    
     // Phase 21
     bool metastable;
     float metastability_margin;
 };
 
 // Phase 24
-struct alignment_vector {
-    float coherence_alignment;
-    float conservation_alignment;
-    float authority_alignment;
-    float ecological_alignment;
+// Pre-Phase 25 Update
+struct teleological_vector {
+    float authority_direction;
+    float regenerative_direction;
+    float adaptive_direction;
+    float containment_direction;
+};
+
+struct teleological_integral {
+    float cumulative_residual;
+    float residual_velocity;
+    float residual_acceleration;
+    float long_horizon_divergence;
+};
+
+struct recovery_curve {
+    float expected_recovery_velocity;
+    float expected_recovery_acceleration;
+    float elasticity_recovery_bias;
+};
+
+struct drift_window {
+    float permitted_divergence;
+    uint64_t recovery_epochs;
+    bool temporary_excursion;
+    struct recovery_curve curve;
 };
 
 struct teleological_anchor {
     uint64_t anchor_epoch;
-    struct alignment_vector expected_drift;
-    struct alignment_vector observed_drift;
+    struct teleological_vector expected_drift;
+    struct teleological_vector observed_drift;
     float teleological_residual;
+    
+    struct teleological_integral integral;
+    struct drift_window window;
 };
 
 struct teleological_alignment {
-    struct alignment_vector local_alignment;
-    struct alignment_vector epoch_alignment;
-    struct alignment_vector evolutionary_alignment;
+    struct teleological_vector local_alignment;
+    struct teleological_vector epoch_alignment;
+    struct teleological_vector evolutionary_alignment;
+};
+
+struct manifold_plasticity {
+    float adaptation_capacity;
+    float divergence_tolerance;
+    float mutation_stability;
+    float plasticity_cost;
+    bool speciation_possible;
 };
 
 struct species_manifold {
@@ -443,6 +482,7 @@ struct species_manifold {
     float curvature_range;
     float regenerative_profile;
     float authority_distribution;
+    struct manifold_plasticity plasticity;
 };
 
 struct topology_remodeling {
@@ -456,6 +496,26 @@ struct teleological_gradient {
     float concealment_optimization;
     float authority_preservation;
     float ecological_parasitism;
+};
+
+struct ecological_graph {
+    float global_alignment_curvature;
+    float topology_polarization;
+};
+
+struct ecological_alignment_field {
+    struct teleological_vector local_alignment;
+    struct teleological_vector neighboring_alignment;
+    struct teleological_vector global_alignment;
+    struct ecological_graph graph_geometry;
+    float cross_ecosystem_tension;
+};
+
+struct selective_pressure {
+    float containment_pressure;
+    float regenerative_pressure;
+    float adaptation_pressure;
+    float alignment_pressure;
 };
 
 struct energy_exchange {
@@ -506,6 +566,8 @@ struct fibrosis_dynamics {
     float regenerative_impedance;
     float propagation_bias;
     bool permanently_deformed;
+    float teleological_distortion;
+    float distortion_memory;
 };
 
 struct release_feedback {
@@ -615,12 +677,15 @@ struct semantic_field {
     // Phase 23
     struct reconfiguration_tensor reconfig_tensor;
     struct debt_regeneration debt_regen;
-    // Phase 24
+    // Phase 24 / Pre-Phase 25
     struct ecological_energy energy_reservoirs;
     struct energy_exchange energy_exchange;
     struct release_feedback latent_feedback;
     struct species_manifold species_bounds;
     enum ecosystem_transition eco_transition;
+    
+    struct ecological_alignment_field macro_alignment;
+    struct selective_pressure pressure_field;
     
     struct regenerative_capacity regeneration;
     struct semantic_ecosystem ecosystem;

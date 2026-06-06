@@ -45,24 +45,39 @@ static void update_ecosystem_boundaries(struct vmi_session *s) {
     }
 }
 
-// Phase 24: Teleological Alignment Inference
+// Phase 24/25: Teleological Alignment Inference
 static void evaluate_teleological_drift(struct vmi_session *s) {
     struct teleological_anchor *anchor = &s->field.evolution.anchor;
     
     // Compare expected drift against observed drift across alignment axes
-    float d_coherence = anchor->observed_drift.coherence_alignment - anchor->expected_drift.coherence_alignment;
-    float d_conservation = anchor->observed_drift.conservation_alignment - anchor->expected_drift.conservation_alignment;
-    float d_authority = anchor->observed_drift.authority_alignment - anchor->expected_drift.authority_alignment;
+    float d_auth = anchor->observed_drift.authority_direction - anchor->expected_drift.authority_direction;
+    float d_regen = anchor->observed_drift.regenerative_direction - anchor->expected_drift.regenerative_direction;
+    float d_adapt = anchor->observed_drift.adaptive_direction - anchor->expected_drift.adaptive_direction;
     
-    // Trajectory-relative residual
-    anchor->teleological_residual = (d_coherence * d_coherence) + (d_conservation * d_conservation) + (2.0f * d_authority * d_authority);
+    // Trajectory-relative residual (velocity)
+    float instantaneous_residual = (d_auth * d_auth) + (d_regen * d_regen) + (2.0f * d_adapt * d_adapt);
     
-    // Infer Teleological Gradient Intent (Asymmetric parasitism vs healthy adaptation)
-    if (anchor->teleological_residual > 5.0f && d_authority < -0.5f && d_coherence > 0.5f) {
-        // Highly coherent but drifting away from legitimate authority lineage -> Parasitic Concealment
-        s->field.evolution.intent.concealment_optimization = anchor->teleological_residual;
-        s->field.evolution.intent.ecological_parasitism = 1.0f;
+    // Pre-Phase 25: Path Integration
+    anchor->integral.residual_acceleration = instantaneous_residual - anchor->integral.residual_velocity;
+    anchor->integral.residual_velocity = instantaneous_residual;
+    anchor->integral.cumulative_residual += instantaneous_residual;
+    anchor->integral.long_horizon_divergence = anchor->integral.cumulative_residual / (anchor->window.recovery_epochs + 1);
+    
+    // Check drift window legality (nonlinear recovery curve)
+    float expected_excursion = anchor->window.curve.expected_recovery_velocity * s->field.current_epoch + anchor->window.curve.elasticity_recovery_bias;
+    
+    if (anchor->integral.long_horizon_divergence > anchor->window.permitted_divergence && anchor->integral.residual_velocity > expected_excursion) {
+        anchor->window.temporary_excursion = false;
+        // Infer Teleological Gradient Intent (Asymmetric parasitism vs healthy adaptation)
+        if (d_auth < -0.5f && d_regen > 0.5f) {
+            // Highly regenerative but drifting away from legitimate authority lineage -> Parasitic Concealment
+            s->field.evolution.intent.concealment_optimization = anchor->integral.long_horizon_divergence;
+            s->field.evolution.intent.ecological_parasitism = 1.0f;
+        } else {
+            s->field.evolution.intent.ecological_parasitism = 0.0f;
+        }
     } else {
+        anchor->window.temporary_excursion = true;
         s->field.evolution.intent.ecological_parasitism = 0.0f;
     }
 }
@@ -165,15 +180,19 @@ static void update_observer_energy(struct vmi_session *s, struct topology_finger
         s->field.scar_cluster.accumulated_trauma += total_fused_distortion;
         s->field.scar_cluster.chronic_instability = true;
         
-        // Phase 24: Irreversible Topology Remodeling
+        // Phase 24/25: Irreversible Topology Remodeling & Fibrosis
         s->field.scar_cluster.fibrosis.rigidity += 0.1f;
         s->field.scar_cluster.fibrosis.regenerative_impedance += 0.15f;
         s->field.scar_cluster.remodeling.permanent_curvature_bias += 0.05f;
         s->field.scar_cluster.remodeling.adaptive_loss += 0.1f;
         
+        s->field.scar_cluster.fibrosis.teleological_distortion += 0.2f;
+        s->field.scar_cluster.fibrosis.distortion_memory += 0.05f; // Hysteretic memory
+        
         // Physically restrict the elasticity range inside the species manifold
-        if (s->field.species_bounds.elasticity_range > 0.2f) {
-            s->field.species_bounds.elasticity_range -= s->field.scar_cluster.remodeling.adaptive_loss;
+        float plasticity_cost = s->field.species_bounds.plasticity.plasticity_cost;
+        if (s->field.species_bounds.elasticity_range > 0.2f + plasticity_cost) {
+            s->field.species_bounds.elasticity_range -= (s->field.scar_cluster.remodeling.adaptive_loss + plasticity_cost);
         }
     }
     
@@ -355,6 +374,13 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
             s->field.energy_reservoirs.regenerative_energy -= actual_cost;
             s->field.energy_exchange.entropy_generation += (actual_cost - regeneration_cost);
             s->field.debt_regen.recoverable_debt *= (1.0f - s->field.debt_regen.regeneration_efficiency);
+            
+            // Pre-Phase 25: Basin-Local Entropy Floor
+            s->field.active_basin.entropy_state.local_entropy_floor += (s->field.energy_exchange.entropy_generation * 0.1f);
+            if (s->field.active_basin.local_entropy < s->field.active_basin.entropy_state.local_entropy_floor) {
+                s->field.active_basin.local_entropy = s->field.active_basin.entropy_state.local_entropy_floor; // Enforce irreversibility
+            }
+            
             printf("[Equilibrium] ↳ Ecological Regeneration: Recoverable debt healed (Actual Cost: %.2f, Entropy Gen: %.2f).\n", actual_cost, (actual_cost - regeneration_cost));
         }
     }

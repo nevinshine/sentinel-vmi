@@ -4,6 +4,72 @@
 #include <stdatomic.h>
 #include <immintrin.h>
 #include <string.h>
+#include <linux/perf_event.h>
+#include <sys/syscall.h>
+#include <asm/unistd.h>
+#include <sys/ioctl.h>
+
+static int perf_event_open(struct perf_event_attr *hw_event, pid_t pid, int cpu, int group_fd, unsigned long flags) {
+    return syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+}
+
+// ──────────────────────────────────────────────
+// Stage 3B: Hardware Pressure Telemetry
+// ──────────────────────────────────────────────
+static struct hardware_telemetry hw_telem = {0};
+static int perf_fd = -1;
+
+static void rotate_telemetry_epoch(void) {
+    if (perf_fd != -1) {
+        uint64_t count = 0;
+        read(perf_fd, &count, sizeof(uint64_t));
+        
+        switch (hw_telem.telemetry_epoch) {
+            case 0: hw_telem.llc_load_misses = count; break;
+            case 1: hw_telem.numa_remote_accesses = count; break;
+            case 2: hw_telem.dtlb_load_misses = count; break;
+            case 3: hw_telem.page_walk_cycles = count; break;
+        }
+        
+        close(perf_fd);
+        perf_fd = -1;
+    }
+    
+    hw_telem.telemetry_epoch = (hw_telem.telemetry_epoch + 1) % 4;
+    
+    struct perf_event_attr pe;
+    memset(&pe, 0, sizeof(struct perf_event_attr));
+    pe.size = sizeof(struct perf_event_attr);
+    pe.disabled = 1;
+    pe.exclude_kernel = 0;
+    pe.exclude_hv = 1;
+    
+    switch (hw_telem.telemetry_epoch) {
+        case 0: 
+            pe.type = PERF_TYPE_HARDWARE;
+            pe.config = PERF_COUNT_HW_CACHE_MISSES;
+            break;
+        case 1:
+            pe.type = PERF_TYPE_HW_CACHE;
+            pe.config = (PERF_COUNT_HW_CACHE_NODE) | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
+            break;
+        case 2:
+            pe.type = PERF_TYPE_HW_CACHE;
+            pe.config = (PERF_COUNT_HW_CACHE_DTLB) | (PERF_COUNT_HW_CACHE_OP_READ << 8) | (PERF_COUNT_HW_CACHE_RESULT_MISS << 16);
+            break;
+        case 3:
+            // Software fallback if page walk cycles aren't supported uniformly
+            pe.type = PERF_TYPE_SOFTWARE;
+            pe.config = PERF_COUNT_SW_PAGE_FAULTS;
+            break;
+    }
+    
+    perf_fd = perf_event_open(&pe, 0, -1, -1, 0);
+    if (perf_fd != -1) {
+        ioctl(perf_fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+    }
+}
 
 // ──────────────────────────────────────────────
 // Stage 3A: Orchestration Thermodynamics
@@ -66,14 +132,21 @@ void regulatory_daemon_loop(struct vmi_session *s) {
     
     bool events_processed = false;
     
+    // Stage 3B: Rotating Telemetry Cadence (~50ms approximated by TSC loops if we had a clock)
+    // For the loop, we rotate it periodically. Let's do it every 100 loops.
+    static uint32_t loop_counter = 0;
+    if (loop_counter++ % 100 == 0) {
+        rotate_telemetry_epoch();
+    }
+    
     // Process intra-NUMA rings sequentially
     for (uint32_t nz = 0; nz < s->nr_numa_zones; nz++) {
         struct numa_zone *zone = &s->numa_zones[nz];
         
-        // Stage 2D: Anticipatory Compression
-        if (zone->pressure.saturation_velocity > 1000) {
+        // Stage 3B: Hardware telemetry influencing compression mode
+        if (hw_telem.numa_remote_accesses > 50000 || zone->pressure.saturation_velocity > 1000) {
             zone->active_compression = COMPRESS_FENCE_ONLY;
-        } else if (zone->pressure.saturation_velocity > 500) {
+        } else if (hw_telem.llc_load_misses > 100000 || zone->pressure.saturation_velocity > 500) {
             zone->active_compression = COMPRESS_PROBABILISTIC;
         } else {
             zone->active_compression = COMPRESS_NONE;
@@ -124,6 +197,29 @@ void regulatory_daemon_loop(struct vmi_session *s) {
                     head = (head + 1) % SENSOR_RING_SIZE;
                     atomic_store_explicit(&ring->head, head, memory_order_release);
                     continue;
+                }
+                
+                // Stage 3B: Coalesce Coherent Fences
+                if (zone->active_compression == COMPRESS_FENCE_ONLY && ev->fence_type != FENCE_NONE) {
+                    if (ev->fence_type == EV_K8S_DEPLOYMENT || ev->fence_type == EV_K8S_SCALE) {
+                        static struct orchestration_wave active_wave = {0};
+                        uint64_t deployment_anchor = ev->cr3 & 0xFFFFFFFFFF000000; // Mock stable anchor
+                        
+                        if (active_wave.authority_root == 0 || active_wave.authority_root != deployment_anchor) {
+                            active_wave.authority_root = deployment_anchor;
+                            active_wave.deployment_pressure = 1;
+                            active_wave.churn_density = 1;
+                            active_wave.authority_entropy = 100; 
+                        } else {
+                            active_wave.deployment_pressure++;
+                            active_wave.churn_density++;
+                            
+                            // Absorb into wave manifold and skip arena insertion
+                            head = (head + 1) % SENSOR_RING_SIZE;
+                            atomic_store_explicit(&ring->head, head, memory_order_release);
+                            continue;
+                        }
+                    }
                 }
                 
                 if (zone->budget.reconstruction_cycles == 0) {

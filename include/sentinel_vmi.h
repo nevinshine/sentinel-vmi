@@ -109,6 +109,66 @@ struct orchestration_zone {
     uint32_t semantic_density;
 };
 
+// ──────────────────────────────────────────────
+// Stage 3B: Cloud Runtime Pressure Characterization
+// ──────────────────────────────────────────────
+
+struct hardware_telemetry {
+    uint64_t llc_load_misses;
+    uint64_t numa_remote_accesses;
+    uint64_t dtlb_load_misses;
+    uint64_t page_walk_cycles;
+    uint32_t telemetry_epoch;
+};
+
+struct fence_surge_state {
+    uint32_t surge_velocity;
+    uint32_t synchronization_density;
+    bool dampening_active;
+};
+
+struct rarity_score {
+    uint32_t local_frequency;
+    uint32_t cluster_frequency;
+    uint16_t rarity_weight;
+    uint16_t survivability_priority;
+};
+
+struct local_cluster_estimate {
+    uint32_t sampled_deployments;
+    uint32_t sampled_namespace_mutations;
+    uint32_t sampled_ebpf_anchors;
+    uint32_t sampled_rbac_mutations;
+    uint64_t estimate_epoch;
+};
+
+struct orchestration_wave {
+    uint64_t authority_root;
+    uint32_t deployment_pressure;
+    uint32_t churn_density;
+    uint32_t synchronization_confidence;
+    uint32_t authority_entropy;
+};
+
+struct coherence_wave {
+    uint32_t fence_density;
+    uint32_t authority_similarity;
+    uint32_t rollout_synchrony;
+    uint32_t namespace_alignment;
+};
+
+struct synchronization_decay {
+    uint32_t rollout_half_life;
+    uint32_t coherence_decay;
+    uint32_t authority_stability;
+};
+
+struct arena_heatmap {
+    uint32_t hot_cr3_density;
+    uint32_t orphan_pressure;
+    uint32_t reset_probability;
+};
+
 enum survivability_class {
     SURVIVE_CRITICAL,
     SURVIVE_IMPORTANT,

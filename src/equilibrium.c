@@ -29,6 +29,22 @@ static void infer_attractor_type(struct vmi_session *s) {
     }
 }
 
+// Phase 23: Ecosystem Boundaries (Emergent)
+static void update_ecosystem_boundaries(struct vmi_session *s) {
+    float internal_legitimacy = s->field.legitimacy_flux * (1.0f - s->field.compressibility.cross_axis_coupling);
+    float external_pressure = s->field.local_coupling.downstream_influence + s->field.local_coupling.upstream_influence;
+    
+    s->field.ecosystem.internal_coherence = internal_legitimacy / (s->field.active_basin.local_entropy + 0.01f);
+    s->field.ecosystem.external_coupling = external_pressure;
+    
+    // Emergent Boundary Inference
+    if (s->field.ecosystem.internal_coherence > s->field.ecosystem.external_coupling) {
+        s->field.ecosystem.semi_autonomous = true;
+    } else {
+        s->field.ecosystem.semi_autonomous = false;
+    }
+}
+
 // Phase 21: Semantic Phase Mechanics & Criticality
 static void calculate_compressibility(struct vmi_session *s) {
     float elasticity = s->field.elasticity.recovery_elasticity;
@@ -62,6 +78,19 @@ static void evaluate_metastability(struct vmi_session *s) {
     
     s->field.active_basin.latent_phase_energy = (suppressed_divergence * 0.5f) + (reduced_elasticity * 1.5f) + (coupling_memory * 1.0f);
     
+    // Phase 23: Latent phase energy release mechanics
+    if (s->field.active_basin.latent_phase_energy > s->field.active_basin.release_threshold && s->field.active_basin.release_threshold > 0.0f) {
+        float discharge = s->field.active_basin.latent_phase_energy * s->field.active_basin.release_rate;
+        s->field.active_basin.latent_phase_energy -= discharge;
+        
+        switch (s->field.active_basin.channel) {
+            case RELEASE_CURVATURE: s->field.active_basin.local_curvature += discharge; break;
+            case RELEASE_FRAGMENTATION: s->field.active_basin.local_entropy += discharge; break;
+            case RELEASE_PROPAGATION: s->field.criticality.propagation_criticality += discharge; break;
+            case RELEASE_COMPARTMENTALIZATION: s->field.ecosystem.internal_coherence += discharge; break;
+        }
+    }
+    
     if (s->field.active_basin.metastability_margin > 2.0f && s->field.compressibility.execution_axis < 0.5f) {
         s->field.active_basin.metastable = true;
     } else {
@@ -81,20 +110,39 @@ static float calculate_fingerprint_distance(struct topology_fingerprint *a, stru
     float d_con = a->temporal_drift.contraction_rate - b->temporal_drift.contraction_rate;
     float d_prop = a->temporal_drift.propagation_rate - b->temporal_drift.propagation_rate;
     
-    float temporal_dist = (d_exp * d_exp) + (d_con * d_con) + (2.0f * d_prop * d_prop);
+    // Phase 23: Curvature-aware temporal drift (second-order dynamics)
+    float d_prop_accel = a->temporal_drift.propagation_acceleration - b->temporal_drift.propagation_acceleration;
+    float d_conv_accel = a->temporal_drift.convergence_acceleration - b->temporal_drift.convergence_acceleration;
+    
+    float temporal_dist = (d_exp * d_exp) + (d_con * d_con) + (2.0f * d_prop * d_prop) + (1.5f * d_prop_accel * d_prop_accel) + (1.5f * d_conv_accel * d_conv_accel);
     float spatial_dist = (2.0f * d_res * d_res) + (1.5f * d_curv * d_curv) + (1.0f * d_flux * d_flux) + (0.8f * d_ent * d_ent) + (0.5f * d_shear * d_shear);
     
     return spatial_dist + temporal_dist;
 }
 
 static void update_observer_energy(struct vmi_session *s, struct topology_fingerprint *fp, float intervention_cost, float severity) {
-    // Phase 22: Spatial Locality for Observer Energy
+    // Phase 22/23: Spatial Locality for Observer Energy & Basin Anchoring
     struct observer_scar *scars = s->field.observer.local_scars;
     size_t *nr_scars = &s->field.observer.nr_scars;
     
+    // Phase 23: Scar Fusion Logic (Fibrosis)
+    int fusion_count = 0;
+    float total_fused_distortion = 0.0f;
+    for (size_t i = 0; i < *nr_scars; i++) {
+        if (scars[i].basin_id == s->field.active_basin.basin_id && calculate_fingerprint_distance(&scars[i].region, fp) < 2.0f) {
+            fusion_count++;
+            total_fused_distortion += scars[i].accumulated_distortion;
+        }
+    }
+    
+    if (fusion_count > 3) {
+        s->field.scar_cluster.accumulated_trauma += total_fused_distortion;
+        s->field.scar_cluster.chronic_instability = true;
+    }
+    
     int found_idx = -1;
     for (size_t i = 0; i < *nr_scars; i++) {
-        if (calculate_fingerprint_distance(&scars[i].region, fp) < 1.0f) {
+        if (scars[i].basin_id == s->field.active_basin.basin_id && calculate_fingerprint_distance(&scars[i].region, fp) < 1.0f) {
             found_idx = i;
             break;
         }
@@ -126,6 +174,7 @@ static void update_observer_energy(struct vmi_session *s, struct topology_finger
         scars[found_idx].recovery_progress = 0.0f;
         scars[found_idx].semantic_severity = severity;
         scars[found_idx].last_epoch = s->field.current_epoch;
+        scars[found_idx].basin_id = s->field.active_basin.basin_id;
     }
     
     // Global integral still tracks overall poisoning
@@ -163,9 +212,14 @@ static void evaluate_phase_transition(struct vmi_session *s, enum semantic_phase
         s->field.phase = proposed_next;
         s->field.phase_state.dwell_epochs = 0;
         
+        // Phase 23: Redistribution efficiency
+        float efficiency = s->field.phase_energy.redistribution_efficiency > 0.0f ? s->field.phase_energy.redistribution_efficiency : 0.9f;
+        float recoverable = total_phase_energy * efficiency;
+        s->field.phase_energy.irreversible_loss += (total_phase_energy - recoverable);
+        
         // Dissipate a fraction, transfer the rest to latent
-        s->field.phase_energy.dissipated_energy += (total_phase_energy * 0.2f);
-        s->field.active_basin.latent_phase_energy += (total_phase_energy * 0.8f);
+        s->field.phase_energy.dissipated_energy += (recoverable * 0.2f);
+        s->field.active_basin.latent_phase_energy += (recoverable * 0.8f);
         
         // Reset local active phase tensor
         s->field.phase_energy.authority_energy = 0.0f;
@@ -183,9 +237,10 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     
     struct local_basin *basin = &s->field.active_basin;
     
-    // Phase 21/22 Additions:
+    // Phase 21/22/23 Additions:
     calculate_compressibility(s);
     evaluate_metastability(s);
+    update_ecosystem_boundaries(s);
     
     float total_resonance = s->field.resonance.transition_resonance + 
                             s->field.resonance.authority_resonance + 
@@ -243,6 +298,13 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     }
     
     evaluate_phase_transition(s, proposed_phase);
+    
+    // Phase 23: Thermodynamic Healing
+    if (s->field.ecological_energy_reserve > s->field.regeneration_cost && s->field.regeneration_cost > 0.0f) {
+        s->field.ecological_energy_reserve -= s->field.regeneration_cost;
+        s->field.debt_regen.recoverable_debt *= (1.0f - s->field.debt_regen.regeneration_efficiency);
+        printf("[Equilibrium] ↳ Ecological Regeneration: Recoverable debt healed (Cost: %.2f).\n", s->field.regeneration_cost);
+    }
     
     // 4. Homeostatic Recovery Check
     float destabilization_rate = basin->local_entropy * basin->local_curvature;

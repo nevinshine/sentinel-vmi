@@ -419,6 +419,18 @@ sentinel-vmi/
 - Limits Observer Poisoning through localized, priority-evicted **Observer Scars**, favoring the decay of slowly-healing localized trauma over short-term temporal noise.
 
 </details>
+
+<details>
+<summary><b>Phase 23: Ecological Regeneration & Evolution Mechanics</b> — Runtime semantic ecology control theory</summary>
+
+- Elevates Sentinel into a true deterministic semantic ecology mechanics engine, modeling execution topologies as self-repairing, thermodynamic ecosystems capable of emergent evolution.
+- Replaces static container/namespace boundaries with **Emergent Ecosystem Boundaries** defined dynamically by internal coherence outweighing external coupling (`legitimacy_flux > external_pressure`).
+- Implements **Thermodynamic Ecological Healing**, allowing stable systems to proactively spend energy reserves to regenerate historically compromised topologies (`recoverable_debt`) without artificially clearing structurally irreversible scars.
+- Tracks targeted **Latent Energy Release Channels**, enabling metastable geometries to discharge accumulated strain physically through distinct channels (curvature explosion vs. fragmentation vs. namespace propagation).
+- Introduces **Semantic Fibrosis (Scar Fusion)**, mathematically grouping temporally and spatially correlated observer scars into macro-clusters to properly penalize long-lived parasitic enclaves that absorb localized interventions.
+- Evolves **Topology Reconfiguration** into a full tensorial cross-coupling architecture, recognizing that adaptation, convergence, and fragmentation influence each other directionally during large-scale phase transitions.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

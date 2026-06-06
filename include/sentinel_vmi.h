@@ -109,11 +109,17 @@ struct semantic_inertia_vector {
     float namespace_resistance;
 };
 
+enum release_channel {
+    RELEASE_CURVATURE,
+    RELEASE_FRAGMENTATION,
+    RELEASE_PROPAGATION,
+    RELEASE_COMPARTMENTALIZATION
+};
+
 struct stability_basin {
     float equilibrium_radius;
     float recovery_probability;
     enum attractor_type attractor;
-    
     // Phase 21
     bool metastable;
     float metastability_margin;
@@ -123,6 +129,10 @@ struct temporal_gradient {
     float expansion_rate;
     float contraction_rate;
     float propagation_rate;
+    
+    // Phase 23
+    float propagation_acceleration;
+    float convergence_acceleration;
 };
 
 struct topology_fingerprint {
@@ -140,6 +150,9 @@ struct observer_scar {
     float recovery_progress;
     float semantic_severity;
     uint64_t last_epoch;
+    
+    // Phase 23
+    uint64_t basin_id;
 };
 
 struct observer_effect {
@@ -210,6 +223,10 @@ struct phase_energy_tensor {
     float execution_energy;
     float transferred_energy;
     float dissipated_energy;
+    
+    // Phase 23
+    float redistribution_efficiency;
+    float irreversible_loss;
 };
 
 struct compressibility_tensor {
@@ -390,9 +407,55 @@ struct local_basin {
     // Phase 22
     float latent_phase_energy;
     
+    // Phase 23
+    float release_threshold;
+    float release_rate;
+    enum release_channel channel;
+    
     // Phase 21
     bool metastable;
     float metastability_margin;
+};
+
+// Phase 23
+struct semantic_ecosystem {
+    uint64_t ecosystem_id;
+    float internal_coherence;
+    float external_coupling;
+    float ecological_pressure;
+    float regenerative_stability;
+    bool semi_autonomous;
+    bool parasitic;
+};
+
+struct debt_regeneration {
+    float recoverable_debt;
+    float irreversible_debt;
+    float regeneration_efficiency;
+};
+
+struct reconfiguration_tensor {
+    float adapt_to_fragment;
+    float fragment_to_converge;
+    float converge_to_adapt;
+};
+
+struct scar_cluster {
+    float accumulated_trauma;
+    float topology_fragility;
+    bool chronic_instability;
+};
+
+struct evolutionary_drift {
+    float topology_divergence_rate;
+    float attractor_mutation_rate;
+    float coherence_preservation;
+};
+
+struct regenerative_capacity {
+    float topology_repair_rate;
+    float authority_recovery_rate;
+    float compartmentalization_gain;
 };
 
 
@@ -440,6 +503,16 @@ struct semantic_field {
     struct criticality_cascade criticality_cascade;
     struct phase_energy_tensor phase_energy;
     enum reconfiguration_mode reconfig_mode;
+    
+    // Phase 23
+    struct reconfiguration_tensor reconfig_tensor;
+    struct debt_regeneration debt_regen;
+    float regeneration_cost;
+    float ecological_energy_reserve;
+    struct regenerative_capacity regeneration;
+    struct semantic_ecosystem ecosystem;
+    struct scar_cluster scar_cluster;
+    struct evolutionary_drift evolution;
     
     enum semantic_phase phase;
     

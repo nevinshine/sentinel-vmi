@@ -143,7 +143,89 @@ struct semantic_trajectory {
     uint64_t projected_epochs_to_instability;
     float trajectory_curvature;       // d²(divergence)/d(epoch²)
     float escape_velocity;            // Native geometric stabilization force required
+    float projection_confidence;
 };
+
+// Phase 19: Counterfactual Stabilization Theory
+enum stabilization_legality {
+    STABILIZATION_ILLEGAL,
+    STABILIZATION_DESTRUCTIVE,
+    STABILIZATION_CONSTRAINED,
+    STABILIZATION_OPTIMAL
+};
+
+enum stabilization_class {
+    STABILIZE_OBSERVE,
+    STABILIZE_THROTTLE,
+    STABILIZE_QUARANTINE,
+    STABILIZE_ISOLATE,
+    STABILIZE_REVOKE,
+    STABILIZE_FREEZE
+};
+
+enum enforcement_scope {
+    SCOPE_NONE = 0,
+    SCOPE_THREAD,
+    SCOPE_PROCESS,
+    SCOPE_VCPU,
+    SCOPE_VM,
+    SCOPE_HOST
+};
+
+struct stabilization_candidate {
+    uint64_t candidate_id;
+    enum stabilization_class action_class;
+    enum enforcement_scope scope;
+
+    float projected_stability_gain;
+    float projected_topology_distortion;
+
+    float conservation_recovery;
+    float authority_displacement;
+
+    float observer_cost;
+    float topology_recovery_cost;
+    float intervention_minimality;    // stability_gain / topology_distortion
+    float recovery_integrity;
+    float reversibility_score;
+    
+    enum stabilization_legality legality;
+};
+
+struct stabilization_chain {
+    struct stabilization_candidate steps[4];
+    size_t nr_steps;
+    float cumulative_distortion;
+    float cumulative_recovery;
+};
+
+struct counterfactual_result {
+    struct stabilization_chain chain;
+    enum field_closure_state projected_state;
+
+    float projected_flux;
+    float projected_curvature;
+    float projected_entropy;
+
+    float stabilization_energy;
+    bool stable;
+};
+
+struct semantic_elasticity {
+    float recovery_elasticity;
+    float fragmentation_elasticity;
+    float authority_elasticity;
+};
+
+struct local_basin {
+    uint64_t basin_id;
+    float local_entropy;
+    float local_curvature;
+    float local_flux;
+    bool isolated;
+    bool repairable;
+};
+
 
 struct semantic_field {
     struct semantic_field_legitimacy legitimacy;
@@ -166,6 +248,10 @@ struct semantic_field {
     struct observer_effect observer;
     struct stability_gradient stab_gradient;
     struct semantic_shear shear;
+    
+    struct semantic_elasticity elasticity;
+    struct counterfactual_result optimal_stabilization;
+    struct local_basin active_basin;
     
     float semantic_temperature;
     float collapse_hysteresis;
@@ -190,6 +276,17 @@ struct semantic_field {
     
     uint64_t current_epoch;
     uint64_t coherence_epoch;
+};
+
+struct semantic_overlay {
+    uint64_t overlay_epoch;
+    struct semantic_field projected_field;
+    
+    // Abstract differentials (for zero-latency replay without cloning all actors)
+    float delta_auth_mass;
+    float delta_leg_mass;
+    float delta_volatility;
+    float delta_entropy;
 };
 
 struct vmi_session {
@@ -743,6 +840,7 @@ struct execution_transition {
     enum transition_cause cause;
     float retention_score;
     struct execution_edge edge;
+    bool irreversible_transition;
 };
 
 struct semantic_epoch {
@@ -780,6 +878,7 @@ void vmi_log_transition(struct vmi_session *s, struct execution_transition *t);
 void vmi_log_authority_transition(struct vmi_session *s, struct authority_transition *t);
 void vmi_calculate_thermodynamics(struct vmi_session *s);
 void vmi_project_trajectory(struct vmi_session *s);
+struct counterfactual_result vmi_simulate_intervention(struct vmi_session *s, struct stabilization_chain *chain);
 
 // ──────────────────────────────────────────────
 // Phase 12: Active EPT/NPT Mediation Engine
@@ -796,14 +895,6 @@ enum mediation_action {
     MEDIATE_INJECT_PF
 };
 
-enum enforcement_scope {
-    SCOPE_NONE = 0,
-    SCOPE_THREAD,
-    SCOPE_PROCESS,
-    SCOPE_VCPU,
-    SCOPE_VM,
-    SCOPE_HOST
-};
 
 struct mediation_decision {
     enum mediation_action action;

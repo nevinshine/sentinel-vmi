@@ -9,6 +9,13 @@
 #include <stdatomic.h>
 
 // ──────────────────────────────────────────────
+// Stage 2D: Q8.8 Fixed-Point Quantization
+// ──────────────────────────────────────────────
+typedef uint16_t q8_8_t;
+#define F32_TO_Q8_8(f) ((q8_8_t)((f) * 256.0f))
+#define Q8_8_TO_F32(q) ((float)(q) / 256.0f)
+
+// ──────────────────────────────────────────────
 // Stage 2B: Distributed Causality Utilities
 // ──────────────────────────────────────────────
 static inline uint64_t rotl64(uint64_t x, int k) {
@@ -40,7 +47,66 @@ enum semantic_fence_type {
     FENCE_PTRACE,
     FENCE_BPF_ATTACH,
     FENCE_MIGRATION,
-    FENCE_CGROUP
+    FENCE_CGROUP,
+    
+    // Stage 3A: Cloud Orchestration Fences
+    EV_K8S_DEPLOYMENT,
+    EV_K8S_SCALE,
+    EV_K8S_NAMESPACE_MUTATION,
+    EV_K8S_SERVICEACCOUNT_SHIFT,
+    EV_K8S_DAEMONSET_PROPAGATION,
+    EV_K8S_CNI_MUTATION,
+    EV_K8S_EBPF_ATTACH,
+    EV_BPF_MAP_MUTATION,
+    EV_BPF_TAILCALL_MUTATION,
+    EV_BPF_PRIV_ESCALATION
+};
+
+// ──────────────────────────────────────────────
+// Stage 3A: Cloud Runtime Semantic Mapping
+// ──────────────────────────────────────────────
+
+struct orchestration_filter {
+    uint32_t minimum_energy;
+    uint32_t namespace_relevance;
+    uint32_t authority_weight;
+};
+
+struct namespace_fingerprint {
+    uint64_t mnt_ns;
+    uint64_t pid_ns;
+    uint64_t net_ns;
+    uint64_t uts_ns;
+    uint64_t user_ns;
+};
+
+struct orchestration_lineage {
+    uint64_t authority_root;
+    uint32_t churn_rate;
+    uint32_t privilege_drift;
+    uint32_t orchestration_entropy;
+};
+
+struct authority_coupling_surface {
+    uint64_t source_identity;
+    uint64_t target_identity;
+    uint32_t coupling_strength;
+    uint32_t propagation_confidence;
+    uint16_t policy_mutation_rate;
+    uint16_t synchronization_pressure;
+};
+
+struct orchestration_decay {
+    uint32_t pod_half_life;
+    uint32_t namespace_half_life;
+    uint32_t workload_half_life;
+};
+
+struct orchestration_zone {
+    uint64_t cluster_id;
+    uint32_t turbulence_score;
+    uint32_t orchestration_pressure;
+    uint32_t semantic_density;
 };
 
 enum survivability_class {
@@ -143,12 +209,75 @@ enum collapse_mode {
     COLLAPSE_RECONSTRUCTION
 };
 
+// ──────────────────────────────────────────────
+// Stage 2D: Locality & Compression Optimization
+// ──────────────────────────────────────────────
+
+struct locality_temperature {
+    uint32_t cache_pressure;
+    uint32_t numa_crossings;
+    uint32_t pointer_churn;
+    uint32_t reconstruction_heat;
+};
+
+struct compression_forecast {
+    uint32_t projected_pressure;
+    uint32_t projected_cache_damage;
+    uint32_t projected_orphan_growth;
+};
+
+enum compression_mode {
+    COMPRESS_NONE = 0,
+    COMPRESS_TEMPORAL,
+    COMPRESS_SPATIAL,
+    COMPRESS_PROBABILISTIC,
+    COMPRESS_FENCE_ONLY,
+    COMPRESS_ORPHAN_SUMMARY
+};
+
+struct reconstruction_hotspot {
+    uint64_t cr3;
+    uint32_t pressure_score;
+    uint32_t locality_damage;
+    uint32_t orphan_density;
+};
+
+struct collapse_summary {
+    uint32_t entropy_density;
+    uint32_t orphan_ratio;
+    uint32_t retained_fence_anchors;
+    uint32_t semantic_debt_snapshot;
+    struct reconstruction_hotspot dominant_hotspots[4];
+};
+
+#define ARENA_MAX_EDGES 1048576 // 1M edges
+
+// Structure-of-Arrays (SoA) for SIMD packing
+struct sparse_edge_store {
+    uint64_t edge_hashes[ARENA_MAX_EDGES];
+    q8_8_t confidence[ARENA_MAX_EDGES] __attribute__((aligned(32)));
+    q8_8_t decay_rate[ARENA_MAX_EDGES] __attribute__((aligned(32)));
+    uint16_t half_life[ARENA_MAX_EDGES] __attribute__((aligned(32)));
+    uint16_t reconstruction_cost[ARENA_MAX_EDGES] __attribute__((aligned(32)));
+    uint32_t count;
+};
+
+struct topology_arena {
+    struct sparse_edge_store *edges;
+};
+
 struct numa_zone {
     uint32_t numa_id;
     struct sensor_ring *local_rings; // Pointers or indices to rings on this node
     uint32_t nr_rings;
     struct pressure_state pressure;
     struct observability_budget budget;
+    
+    // Stage 2D: Locality and Arenas
+    struct topology_arena arena;
+    struct locality_temperature temperature;
+    struct compression_forecast forecast;
+    enum compression_mode active_compression;
 };
 
 // ──────────────────────────────────────────────

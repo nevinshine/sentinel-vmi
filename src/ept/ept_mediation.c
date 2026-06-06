@@ -119,3 +119,74 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
     
     return decision;
 }
+
+// ──────────────────────────────────────────────
+// Stage 3A: Orchestration Ingress Filtering (Sensor Plane)
+// ──────────────────────────────────────────────
+static bool filter_k8s_turbulence(struct vmi_session *s, uint32_t pid, uint32_t energy) {
+    (void)s;
+    (void)pid;
+    // Discard low energy noise from ordinary K8s churn (health checks, etc.)
+    if (energy < 10) return true;
+    return false;
+}
+
+// Fast-path syscall interception for Stage 3A (eBPF & Orchestration Fences)
+void vmi_handle_syscall(struct vmi_session *s, uint64_t rip, uint64_t raw_cr3, uint32_t vcpu_id, uint64_t syscall_nr, uint64_t arg1_cmd) {
+    #define SYS_BPF 321
+    if (syscall_nr != SYS_BPF) return;
+    
+    // Minimal register-resident bpf_cmd parsing
+    uint32_t energy = 0;
+    enum semantic_fence_type fence = FENCE_NONE;
+    
+    // bpf_cmd values
+    #define CMD_BPF_MAP_CREATE 0
+    #define CMD_BPF_MAP_UPDATE_ELEM 2
+    #define CMD_BPF_PROG_LOAD 5
+    #define CMD_BPF_RAW_TRACEPOINT_OPEN 17
+    
+    if (arg1_cmd == CMD_BPF_PROG_LOAD || arg1_cmd == CMD_BPF_RAW_TRACEPOINT_OPEN) {
+        energy = 5000;
+        fence = EV_K8S_EBPF_ATTACH;
+    } else if (arg1_cmd == CMD_BPF_MAP_UPDATE_ELEM) {
+        energy = 1000;
+        fence = EV_BPF_MAP_MUTATION;
+    } else {
+        return; // Ignore map reads, generic updates
+    }
+    
+    // Dummy PID for filter
+    uint32_t pid = 0; 
+    
+    if (filter_k8s_turbulence(s, pid, energy)) return;
+    
+    // Inject into ring
+    if (s->vcpu_rings && s->nr_vcpus > 0) {
+        struct sensor_ring *ring = &s->vcpu_rings[vcpu_id % s->nr_vcpus];
+        s->vcpu_epochs[vcpu_id % s->nr_vcpus]++;
+        
+        uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+        uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
+        
+        if ((tail + 1) % SENSOR_RING_SIZE == head) {
+            // Priority Dropping - overwrite if full (these are high-certainty anchors)
+            atomic_compare_exchange_strong(&ring->head, &head, (head + 1) % SENSOR_RING_SIZE);
+        }
+        
+        struct semantic_event *ev = &ring->entries[tail];
+        ev->cr3 = raw_cr3;
+        ev->rip = rip;
+        ev->local_epoch = s->vcpu_epochs[vcpu_id % s->nr_vcpus];
+        ev->vcpu_id = vcpu_id;
+        ev->event_type = EV_SEMANTIC_FENCE;
+        ev->semantic_energy = energy;
+        ev->survivability = SURVIVE_CRITICAL;
+        ev->flags = 0;
+        ev->fence_type = fence;
+        
+        ev->causal_id = rotl64(ev->cr3, 17) ^ rotl64(ev->rip, 31) ^ rotl64(ev->local_epoch, 7) ^ rotl64(ev->vcpu_id, 13) ^ ev->event_type;
+        
+        atomic_store_explicit(&ring->tail, (tail + 1) % SENSOR_RING_SIZE, memory_order_release);
+    }
+}

@@ -23,12 +23,22 @@ enum semantic_event_type {
     EV_RESOURCE_ASYMMETRY = 4
 };
 
+enum survivability_class {
+    SURVIVE_CRITICAL,
+    SURVIVE_IMPORTANT,
+    SURVIVE_BEST_EFFORT,
+    SURVIVE_DISCARDABLE
+};
+
 // Fixed-size, branch-light fast-path event
 struct semantic_event {
     uint64_t cr3;
     uint64_t rip;
+    uint64_t local_epoch;
+    uint32_t vcpu_id;
     uint32_t event_type;
     uint32_t semantic_energy;
+    uint32_t survivability; // enum survivability_class
     uint32_t flags;
     uint32_t pad;
 };
@@ -40,6 +50,9 @@ struct sensor_ring {
 
     _Atomic uint32_t tail;
     char pad2[60];
+    
+    _Atomic uint32_t dynamic_epsilon;
+    char pad3[60];
 
     struct semantic_event entries[SENSOR_RING_SIZE];
 } __attribute__((aligned(64)));
@@ -1001,6 +1014,9 @@ struct vmi_session {
   
   // Stage 1: Fast-Path Per-vCPU Rings
   struct sensor_ring *vcpu_rings;
+  
+  // Stage 2A: Semantic Epoch Decoupling
+  uint64_t vcpu_epochs[VMI_MAX_VCPUS];
 };
 
 // ──────────────────────────────────────────────
@@ -1009,6 +1025,11 @@ struct vmi_session {
 struct vmi_session *kvmi_setup(const char *vm_name);
 void kvmi_teardown(struct vmi_session *session);
 int kvmi_session_heartbeat(struct vmi_session *session);
+
+// ──────────────────────────────────────────────
+// Stage 2A — regulatory_daemon.c
+// ──────────────────────────────────────────────
+void regulatory_daemon_loop(struct vmi_session *s);
 
 // ──────────────────────────────────────────────
 // Phase 1 — memory.c

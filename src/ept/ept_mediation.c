@@ -47,26 +47,57 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
         }
     }
     
-    // 3. Lossy Compression (Semantic Forgetting)
-    // If energy is 0 or below epsilon, we forget it entirely. It never enters the ring.
-    if (energy > 0) {
-        // Enqueue to Stage 1 Fast-Path Ring
-        if (s->vcpu_rings && s->nr_vcpus > 0) {
-            struct sensor_ring *ring = &s->vcpu_rings[vcpu_id % s->nr_vcpus];
-            uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
-            uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
-            
-            if ((tail + 1) % SENSOR_RING_SIZE != head) {
-                struct semantic_event *ev = &ring->entries[tail];
-                ev->cr3 = raw_cr3;
-                ev->rip = rip;
-                ev->event_type = EV_CONSERVATION_BREAK;
-                ev->semantic_energy = energy;
-                ev->flags = (is_write ? 1 : 0) | (is_exec ? 2 : 0) | (has_cap ? 4 : 0);
-                
-                atomic_store_explicit(&ring->tail, (tail + 1) % SENSOR_RING_SIZE, memory_order_release);
-            }
+    // Compute Survivability Class
+    enum survivability_class surv_class = SURVIVE_DISCARDABLE;
+    if (energy >= (1 << 10)) {
+        surv_class = SURVIVE_CRITICAL;
+    } else if (energy >= (1 << 8)) {
+        surv_class = SURVIVE_IMPORTANT;
+    } else if (energy > 0) {
+        surv_class = SURVIVE_BEST_EFFORT;
+    }
+    
+    // 3. Lossy Compression & Dynamic Backpressure
+    if (s->vcpu_rings && s->nr_vcpus > 0) {
+        struct sensor_ring *ring = &s->vcpu_rings[vcpu_id % s->nr_vcpus];
+        uint32_t epsilon = atomic_load_explicit(&ring->dynamic_epsilon, memory_order_relaxed);
+        
+        // Semantic forgetting: discard low energy if below epsilon
+        if (energy < epsilon && surv_class != SURVIVE_CRITICAL) {
+            return decision; // Silent drop
         }
+        
+        // Advance local semantic epoch
+        s->vcpu_epochs[vcpu_id % s->nr_vcpus]++;
+        
+        uint32_t tail = atomic_load_explicit(&ring->tail, memory_order_relaxed);
+        uint32_t head = atomic_load_explicit(&ring->head, memory_order_acquire);
+        
+        if ((tail + 1) % SENSOR_RING_SIZE == head) {
+            // Ring is full: Increase consumer backpressure
+            atomic_fetch_add(&ring->dynamic_epsilon, (1 << 6)); // Step up epsilon
+            
+            // Priority Dropping
+            if (surv_class != SURVIVE_CRITICAL) {
+                return decision; // Tail drop medium/low energy
+            }
+            
+            // Critical Event: We must survive. Overwrite oldest by bumping head.
+            atomic_compare_exchange_strong(&ring->head, &head, (head + 1) % SENSOR_RING_SIZE);
+        }
+        
+        // Enqueue
+        struct semantic_event *ev = &ring->entries[tail];
+        ev->cr3 = raw_cr3;
+        ev->rip = rip;
+        ev->local_epoch = s->vcpu_epochs[vcpu_id % s->nr_vcpus];
+        ev->vcpu_id = vcpu_id;
+        ev->event_type = EV_CONSERVATION_BREAK;
+        ev->semantic_energy = energy;
+        ev->survivability = surv_class;
+        ev->flags = (is_write ? 1 : 0) | (is_exec ? 2 : 0) | (has_cap ? 4 : 0);
+        
+        atomic_store_explicit(&ring->tail, (tail + 1) % SENSOR_RING_SIZE, memory_order_release);
         
         // Immediate deterministic mitigation in fast-path
         if (energy > (1 << 10)) {

@@ -309,6 +309,13 @@ struct vmi_session *vmi_session_from_snapshot(const char *bin_path,
   s->field.coherence_epoch = 1;
   s->semantic_epoch = 1;
 
+  // Stage 1/2A: Initialize Fast-Path Rings
+  s->nr_vcpus = 4; // Mock a 4-vCPU snapshot
+  s->vcpu_rings = calloc(s->nr_vcpus, sizeof(struct sensor_ring));
+  for (int i = 0; i < s->nr_vcpus; i++) {
+      s->vcpu_epochs[i] = 1;
+  }
+
   printf("[Snapshot] Success! Kernel %s (build: %s)\n", meta.kernel_release,
          meta.kernel_build_id);
   printf("[Snapshot] CR3: 0x%lx, RIP: 0x%lx\n", meta.vcpu_cr3, meta.vcpu_rip);

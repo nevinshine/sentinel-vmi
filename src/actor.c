@@ -213,11 +213,11 @@ void vmi_project_trajectory(struct vmi_session *s) {
     
     // 5. Basin of Stability
     if (s->field.trajectory.trajectory_curvature < 0.0f) {
-        s->field.basin.attractor = ATTRACTOR_STABLE;
+        s->field.basin.attractor = ATTRACTOR_HEALTHY;
     } else if (s->field.trajectory.trajectory_curvature > 0.5f) {
         s->field.basin.attractor = ATTRACTOR_COLLAPSING;
     } else {
-        s->field.basin.attractor = ATTRACTOR_OSCILLATORY;
+        s->field.basin.attractor = ATTRACTOR_DEGRADED;
     }
 }
 

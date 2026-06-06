@@ -81,9 +81,10 @@ enum reachability_state {
 };
 
 enum attractor_type {
-    ATTRACTOR_STABLE,
-    ATTRACTOR_OSCILLATORY,
-    ATTRACTOR_DIVERGENT,
+    ATTRACTOR_HEALTHY,
+    ATTRACTOR_DEGRADED,
+    ATTRACTOR_MALIGNANT,
+    ATTRACTOR_PARASITIC,
     ATTRACTOR_COLLAPSING
 };
 
@@ -130,9 +131,9 @@ struct stability_gradient {
 };
 
 struct semantic_shear {
-    float authority_shear;
     float namespace_shear;
-    float legitimacy_shear;
+    float authority_shear;
+    float execution_shear;
 };
 
 struct semantic_trajectory {
@@ -144,6 +145,68 @@ struct semantic_trajectory {
     float trajectory_curvature;       // d²(divergence)/d(epoch²)
     float escape_velocity;            // Native geometric stabilization force required
     float projection_confidence;
+};
+
+// Phase 20: Autonomous Equilibrium Steering
+enum semantic_phase {
+    PHASE_ORDERED,
+    PHASE_META_STABLE,
+    PHASE_TRANSITIONAL,
+    PHASE_TURBULENT,
+    PHASE_COLLAPSED
+};
+
+struct topology_scar {
+    float conservation_violation;
+    float illegitimate_authority_origin;
+    float irreversible_divergence;
+};
+
+struct semantic_friction {
+    float authority_friction;
+    float namespace_friction;
+    float execution_friction;
+};
+
+struct basin_coupling {
+    uint64_t source_basin;
+    uint64_t target_basin;
+    float coupling_strength;
+    float propagation_risk;
+};
+
+struct stabilization_memory {
+    uint64_t intervention_hash;
+    float historical_gain;
+    float historical_distortion;
+    bool destabilizing_pattern;
+};
+
+struct semantic_resonance {
+    float transition_resonance;
+    float authority_resonance;
+    float namespace_resonance;
+    bool resonant_instability;
+};
+
+struct semantic_deadzone {
+    float curvature_deadzone;
+    float shear_deadzone;
+    float flux_deadzone;
+};
+
+struct semantic_homeostasis {
+    float equilibrium_bias;
+    float adaptive_damping;
+    bool self_correcting;
+};
+
+struct equilibrium_controller {
+    float correction_rate;
+    float damping_factor;
+    float stabilization_bias;
+    float observer_suppression;
+    bool continuous_regulation;
 };
 
 // Phase 19: Counterfactual Stabilization Theory
@@ -188,6 +251,7 @@ struct stabilization_candidate {
     float intervention_minimality;    // stability_gain / topology_distortion
     float recovery_integrity;
     float reversibility_score;
+    float recursive_observer_cost; // Phase 20
     
     enum stabilization_legality legality;
 };
@@ -219,6 +283,8 @@ struct semantic_elasticity {
 
 struct local_basin {
     uint64_t basin_id;
+    enum attractor_type attractor;
+    struct topology_scar scars;
     float local_entropy;
     float local_curvature;
     float local_flux;
@@ -248,10 +314,20 @@ struct semantic_field {
     struct observer_effect observer;
     struct stability_gradient stab_gradient;
     struct semantic_shear shear;
+    struct semantic_friction friction;
+    struct semantic_resonance resonance;
+    struct semantic_deadzone deadzone;
     
     struct semantic_elasticity elasticity;
+    struct semantic_homeostasis homeostasis;
+    struct equilibrium_controller controller;
+    
     struct counterfactual_result optimal_stabilization;
     struct local_basin active_basin;
+    struct basin_coupling local_coupling;
+    struct stabilization_memory control_memory;
+    
+    enum semantic_phase phase;
     
     float semantic_temperature;
     float collapse_hysteresis;
@@ -879,6 +955,9 @@ void vmi_log_authority_transition(struct vmi_session *s, struct authority_transi
 void vmi_calculate_thermodynamics(struct vmi_session *s);
 void vmi_project_trajectory(struct vmi_session *s);
 struct counterfactual_result vmi_simulate_intervention(struct vmi_session *s, struct stabilization_chain *chain);
+
+// Phase 20: Continuous Equilibrium Regulation
+void vmi_regulate_equilibrium(struct vmi_session *s);
 
 // ──────────────────────────────────────────────
 // Phase 12: Active EPT/NPT Mediation Engine

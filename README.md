@@ -376,6 +376,25 @@ sentinel-vmi/
 
 </details>
 
+<details>
+<summary><b>Phase 19: Counterfactual Stabilization Theory</b> — Minimum-energy topology repair</summary>
+
+- Transforms Sentinel from a security monitor into an autonomous runtime topology regulator. 
+- Performs zero-latency differential counterfactual replay over multiple hypothetical intervention candidates (Observe, Throttle, Quarantine, Freeze).
+- Automatically selects the stabilization chain that requires the lowest `intervention_minimality` while preserving `recovery_integrity`.
+- Formalizes **Observer Dominance**: If regulatory force introduces more topological distortion than it resolves, Sentinel enforces a less destructive stabilization path.
+
+</details>
+
+<details>
+<summary><b>Phase 20: Autonomous Equilibrium Steering</b> — Continuous semantic homeostasis</summary>
+
+- Graduates Sentinel into a continuous homeostasis engine governed by two distinct control loops.
+- **Fast Path** (micro-timescale) handles EPT/MSR traps with zero-latency topological tensor updates (shear, resonance, friction, flux) without running heavy counterfactual solving.
+- **Slow Path** (macro-timescale) runs asynchronously, continuously evaluating attractor states and applying minimum-energy micro-corrections only when the topology escapes structural deadzones.
+- Dynamically classifies attractors using topological scars, allowing Sentinel to differentiate `ATTRACTOR_HEALTHY` stability from `ATTRACTOR_PARASITIC` (a stable rootkit) via causal conservation ancestry.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

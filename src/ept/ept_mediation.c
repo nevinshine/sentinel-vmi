@@ -126,68 +126,29 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
                 vmi_calculate_thermodynamics(s);
                 vmi_project_trajectory(s);
                 
+                // Phase 20: Fast Path Tensor Update
+                s->field.shear.authority_shear += 1.5f;
+                s->field.friction.authority_friction += 0.2f;
+                
+                // We no longer run vmi_simulate_intervention() here. This is the fast path.
                 if (s->field.closure_state == FIELD_COLLAPSING || s->field.closure_state == FIELD_IRRECOVERABLE || s->field.collapse_hysteresis >= 3.0f) {
-                    printf("[Mediation] ⚠ TRUST COLLAPSE: Field mathematically collapsed. Forcing FREEZE.\n");
                     decision.action = MEDIATE_FREEZE;
                     decision.scope = SCOPE_VM;
+                    decision.confidence = 0.99f;
+                    decision.reason = "Phase 20 Semantic Control Fast-Path (Trust Collapse)";
                     s->field.observer.intervention_disruption += 10.0f;
                 } else {
-                    // Phase 19: Counterfactual Stabilization Replay
-                    struct stabilization_chain chains[3];
-                    memset(chains, 0, sizeof(chains));
-                    
-                    chains[0].nr_steps = 1; chains[0].steps[0].action_class = STABILIZE_QUARANTINE; chains[0].steps[0].scope = SCOPE_VCPU;
-                    chains[1].nr_steps = 1; chains[1].steps[0].action_class = STABILIZE_OBSERVE; chains[1].steps[0].scope = SCOPE_VCPU;
-                    chains[2].nr_steps = 1; chains[2].steps[0].action_class = STABILIZE_FREEZE; chains[2].steps[0].scope = SCOPE_VM;
-                    
-                    int best_chain_idx = -1;
-                    float best_minimality = -1.0f;
-                    
-                    for (int i = 0; i < 3; i++) {
-                        struct counterfactual_result res = vmi_simulate_intervention(s, &chains[i]);
-                        if (res.chain.steps[0].legality == STABILIZATION_OPTIMAL || res.chain.steps[0].legality == STABILIZATION_CONSTRAINED) {
-                            if (res.chain.steps[0].intervention_minimality > best_minimality) {
-                                best_minimality = res.chain.steps[0].intervention_minimality;
-                                best_chain_idx = i;
-                            }
-                        }
-                    }
-                    
-                    if (best_chain_idx != -1) {
-                        enum stabilization_class chosen_class = chains[best_chain_idx].steps[0].action_class;
-                        printf("[Mediation] ↳ Action: Applying %s via counterfactual stabilization (Minimality: %.2f).\n",
-                                chosen_class == STABILIZE_QUARANTINE ? "STABILIZE_QUARANTINE" :
-                                chosen_class == STABILIZE_FREEZE ? "STABILIZE_FREEZE" : "STABILIZE_OBSERVE",
-                                best_minimality);
-                                
-                        if (chosen_class == STABILIZE_QUARANTINE) {
-                            if (actor) actor->authority.state = AUTHORITY_QUARANTINED;
-                            decision.action = MEDIATE_INJECT_PF;
-                            decision.scope = SCOPE_VCPU;
-                            s->field.observer.intervention_disruption += 2.0f;
-                        } else if (chosen_class == STABILIZE_FREEZE) {
-                            decision.action = MEDIATE_FREEZE;
-                            decision.scope = SCOPE_VM;
-                            s->field.observer.intervention_disruption += 10.0f;
-                        } else {
-                            decision.action = MEDIATE_INJECT_PF;
-                            decision.scope = SCOPE_VCPU;
-                            s->field.observer.intervention_disruption += 0.5f;
-                        }
-                    } else {
-                        printf("[Mediation] ⚠ WARNING: No optimal or constrained stabilization path found! Falling back to global freeze.\n");
-                        decision.action = MEDIATE_FREEZE;
-                        decision.scope = SCOPE_VM;
-                        s->field.observer.intervention_disruption += 10.0f;
-                    }
+                    // It immediately enforces localized policy (PF injection) to preserve zero-latency.
+                    decision.action = MEDIATE_INJECT_PF;
+                    decision.scope = SCOPE_VCPU;
+                    decision.confidence = 0.99f;
+                    decision.reason = "Phase 20 Semantic Control Fast-Path (Authority Failure)";
+                    s->field.observer.intervention_disruption += 0.5f;
                 }
-                decision.confidence = 1.0f;
-                decision.reason = "Phase 19 Semantic Control Theory";
                 
                 // Track if Sentinel is dominating the field flux
                 if (s->field.observer.intervention_disruption > s->field.trajectory.escape_velocity) {
                     s->field.observer.observer_dominating = true;
-                    printf("[Mediation] ⚠ WARNING: Observer intervention is dominating topological flux!\n");
                 } else {
                     s->field.observer.observer_dominating = false;
                 }
@@ -213,42 +174,18 @@ struct mediation_decision vmi_handle_ept_violation(struct vmi_session *s, struct
             vmi_calculate_thermodynamics(s);
             vmi_project_trajectory(s);
             
-            struct stabilization_chain chains[3];
-            memset(chains, 0, sizeof(chains));
+            // Phase 20: Fast Path Tensor Update
+            s->field.shear.execution_shear += 2.0f;
+            s->field.friction.execution_friction += 0.5f;
             
-            chains[0].nr_steps = 1; chains[0].steps[0].action_class = STABILIZE_QUARANTINE; chains[0].steps[0].scope = SCOPE_VCPU;
-            chains[1].nr_steps = 1; chains[1].steps[0].action_class = STABILIZE_OBSERVE; chains[1].steps[0].scope = SCOPE_VCPU;
-            chains[2].nr_steps = 1; chains[2].steps[0].action_class = STABILIZE_FREEZE; chains[2].steps[0].scope = SCOPE_VM;
-            
-            int best_chain_idx = -1;
-            float best_minimality = -1.0f;
-            
-            for (int i = 0; i < 3; i++) {
-                struct counterfactual_result res = vmi_simulate_intervention(s, &chains[i]);
-                if (res.chain.steps[0].legality == STABILIZATION_OPTIMAL || res.chain.steps[0].legality == STABILIZATION_CONSTRAINED) {
-                    if (res.chain.steps[0].intervention_minimality > best_minimality) {
-                        best_minimality = res.chain.steps[0].intervention_minimality;
-                        best_chain_idx = i;
-                    }
-                }
-            }
-            
-            if (best_chain_idx != -1) {
-                enum stabilization_class chosen_class = chains[best_chain_idx].steps[0].action_class;
-                if (chosen_class == STABILIZE_QUARANTINE) {
-                    decision.action = MEDIATE_INJECT_PF; decision.scope = SCOPE_VCPU;
-                    s->field.observer.intervention_disruption += 2.0f;
-                } else if (chosen_class == STABILIZE_FREEZE) {
-                    decision.action = MEDIATE_FREEZE; decision.scope = SCOPE_VM;
-                    s->field.observer.intervention_disruption += 10.0f;
-                } else {
-                    decision.action = MEDIATE_INJECT_PF; decision.scope = SCOPE_VCPU;
-                    s->field.observer.intervention_disruption += 0.5f;
-                }
-            } else {
+            if (s->field.closure_state == FIELD_COLLAPSING || s->field.closure_state == FIELD_IRRECOVERABLE || s->field.collapse_hysteresis >= 3.0f) {
                 decision.action = MEDIATE_FREEZE;
                 decision.scope = SCOPE_VM;
                 s->field.observer.intervention_disruption += 10.0f;
+            } else {
+                decision.action = MEDIATE_INJECT_PF;
+                decision.scope = SCOPE_VCPU;
+                s->field.observer.intervention_disruption += 1.0f;
             }
             decision.confidence = 0.95f;
             decision.reason = "Immutable core region write contract violated";

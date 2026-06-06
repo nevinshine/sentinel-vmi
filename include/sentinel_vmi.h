@@ -321,12 +321,43 @@ struct regulator_exposure {
     float adaptation_response_rate;
 };
 
+// Layer 10/11
+struct observability_field {
+    float local_visibility;
+    float global_visibility;
+    float observability_debt;
+    float inferential_exhaustion;
+};
+
+struct constitutional_constraint {
+    float maximum_intervention_energy;
+    float minimum_recoverability;
+    float observability_preservation;
+    bool existential_override;
+};
+
 struct regulator_embedding {
     float field_dependency;
     float strategic_visibility;
     float ecological_influence;
     float observability_loss;
     float adaptive_blindness;
+    struct observability_field obs_field;
+    struct constitutional_constraint constitution;
+};
+
+struct ambiguity_cost {
+    float false_containment_risk;
+    float destabilization_risk;
+    float observability_damage;
+    float recoverability_loss;
+};
+
+struct governance_horizon {
+    uint64_t stable_epochs;
+    float projection_confidence;
+    float strategic_decay;
+    float horizon_instability;
 };
 
 struct equilibrium_controller {
@@ -335,6 +366,8 @@ struct equilibrium_controller {
     uint64_t next_intervention_epoch;
     struct regulator_exposure exposure;
     struct regulator_embedding embedding;
+    struct ambiguity_cost ambiguity_risk;
+    struct governance_horizon horizon;
     float observer_suppression;
     bool continuous_regulation;
 };
@@ -411,6 +444,21 @@ struct semantic_elasticity {
     float authority_elasticity;
 };
 
+// Layer 10/11
+struct dark_region_permeability {
+    float information_leakage;
+    float stabilization_penetration;
+    float adaptive_transparency;
+};
+
+struct semantic_dark_region {
+    float observability_loss;
+    float alignment_uncertainty;
+    float stabilization_instability;
+    bool regulation_degraded;
+    struct dark_region_permeability permeability;
+};
+
 struct local_basin {
     uint64_t basin_id;
     enum attractor_type attractor;
@@ -439,6 +487,9 @@ struct local_basin {
     // Phase 21
     bool metastable;
     float metastability_margin;
+    
+    // Layer 10/11
+    struct semantic_dark_region dark_region;
 };
 
 // Phase 24
@@ -545,11 +596,33 @@ struct hidden_optimization_gradient {
     struct counterfactual_manifold counterfactual;
 };
 
+// Layer 10/11
+struct strategic_indistinguishability {
+    float behavioral_overlap;
+    float topological_overlap;
+    float adaptive_overlap;
+    float thermodynamic_overlap;
+};
+
+struct alignment_uncertainty {
+    float observability_bound;
+    float strategic_ambiguity;
+    float inference_instability;
+    struct strategic_indistinguishability overlap;
+};
+
+struct concealment_information_cost {
+    float state_tracking_cost;
+    float adaptation_precision_cost;
+    float coalition_sync_cost;
+};
+
 struct mimicry_cost {
     float coherence_burden;
     float regenerative_burden;
     float entropy_burden;
     float adaptation_overhead;
+    struct concealment_information_cost info_burden;
 };
 
 struct strategic_interaction_local {
@@ -720,12 +793,13 @@ struct evolutionary_drift {
     float attractor_mutation_rate;
     float coherence_preservation;
     
-    // Phase 24/25/26
+    // Phase 24/25/26/27
     struct teleological_alignment teleology;
     struct utility_persistence utility;
     struct hidden_optimization_gradient hidden_opt;
     struct teleological_anchor anchor;
     struct meta_adaptation meta_opt;
+    struct alignment_uncertainty ambiguity;
 };
 
 struct regenerative_capacity {

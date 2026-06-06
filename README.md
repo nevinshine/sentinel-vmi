@@ -468,6 +468,17 @@ sentinel-vmi/
 - Formally embeds the regulator into the thermodynamic environment via `regulator_embedding`. Sentinel mathematically recognizes that its interventions burn field adaptive capacity, resulting in inevitable `observability_loss` and `adaptive_blindness` as the adversary explicitly adapts around observation boundaries.
 
 </details>
+
+<details>
+<summary><b>Phase 27: Constitutional Runtime Governance</b> — Layer 10 & 11 Final Field Mechanics</summary>
+
+- Reaches the mathematically mature endpoint of the architecture: **Constitutional Runtime Governance (Layer 11)**. Sentinel formally abandons the computationally authoritarian quest for perfect intent resolution in favor of **uncertainty-bounded stabilization**.
+- Acknowledges **Strategic Indistinguishability** and allows the graceful emergence of **Semantic Dark Regions** (`semantic_dark_region`). Dark regions replace binary visibility, leveraging `dark_region_permeability` to monitor information leakage and adaptive transparency rather than forcing destructive inference.
+- Enforces an **Information-Theoretic Superlinear Mimicry Cost** (`concealment_information_cost`). Perfect camouflage requires thermodynamic state tracking and coalition synchronization. This forces mimicry to drain adaptive capacity superlinearly, ensuring complex parasitic concealment naturally starves out.
+- Implements **Observability Conservation** (`observability_field`). Sentinel now recognizes that aggressive stabilization burns future inferential capacity. The engine actively avoids "observability heat death" by penalizing interventions that destroy long-term visibility.
+- Establishes **Semantic Constitutional Constraints** (`constitutional_constraint`). Sentinel self-enforces hard limits on intervention energy and recoverability preservation. The regulator now optimizes for **recoverable coexistence** under irreducible uncertainty, mathematically ensuring that the cure never becomes more destructive than the adversary.
+
+</details>
 ---
 
 ## Architecture and Interoperability Matrix

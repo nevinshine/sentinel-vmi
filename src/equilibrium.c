@@ -107,10 +107,49 @@ static void evaluate_hidden_optimization(struct vmi_session *s) {
     
     // 4. Determine Mimicry Burden
     if (s->field.evolution.hidden_opt.adversarial_efficiency > 2.0f && s->field.evolution.anchor.integral.long_horizon_divergence < 1.0f) {
+        // Layer 10/11: Superlinear Information-Theoretic Cost (k=2.0 for simplicity)
+        float alignment_precision = 1.0f / (s->field.evolution.anchor.integral.long_horizon_divergence + 0.01f);
+        float coalition_sync = s->field.macro_alignment.graph_geometry.global_interaction.coalition.coalition_efficiency + 1.0f;
+        float tracking_complexity = s->field.ecosystem.mimicry_burden.info_burden.state_tracking_cost + 1.0f;
+        
+        float mimicry_base = alignment_precision * coalition_sync * tracking_complexity;
+        
         // Suspiciously efficient stability under constraint -> Advanced Mimicry
-        s->field.ecosystem.mimicry_burden.adaptation_overhead += (s->field.evolution.hidden_opt.adversarial_efficiency * 0.1f);
+        s->field.ecosystem.mimicry_burden.adaptation_overhead += ((mimicry_base * mimicry_base) * 0.001f); // k=2.0 scaling
         s->field.ecosystem.mimicry_burden.entropy_burden += 0.05f;
+        s->field.ecosystem.mimicry_burden.info_burden.state_tracking_cost += 0.05f;
         s->field.evolution.meta_opt.stabilization_evasion += 0.1f; // Phase 26
+    }
+}
+
+// Layer 10/11: Bounded Alignment Mechanics
+static void evaluate_alignment_ambiguity(struct vmi_session *s) {
+    struct alignment_uncertainty *amb = &s->field.evolution.ambiguity;
+    
+    // Calculate indistinguishability
+    amb->overlap.behavioral_overlap = 1.0f / (s->field.active_basin.local_entropy + 0.1f);
+    amb->overlap.topological_overlap = 1.0f / (s->field.active_basin.local_curvature + 0.1f);
+    amb->overlap.thermodynamic_overlap = 1.0f / (s->field.ecosystem.ecological_pressure + 0.1f);
+    
+    float total_overlap = amb->overlap.behavioral_overlap * amb->overlap.topological_overlap * amb->overlap.thermodynamic_overlap;
+    
+    // If indistinguishability is high and we suspect hidden optimization
+    if (total_overlap > 5.0f && s->field.evolution.hidden_opt.adversarial_efficiency > 1.0f) {
+        amb->strategic_ambiguity += 0.05f;
+    }
+    
+    amb->observability_bound = 2.0f; // Static threshold for this implementation
+    
+    // Semantic Dark Region collapse
+    if (amb->strategic_ambiguity > amb->observability_bound) {
+        struct semantic_dark_region *dr = &s->field.active_basin.dark_region;
+        dr->alignment_uncertainty = amb->strategic_ambiguity;
+        dr->observability_loss = 1.0f;
+        dr->regulation_degraded = true;
+        
+        // Permeability
+        dr->permeability.information_leakage = s->field.active_basin.local_entropy * 0.1f;
+        dr->permeability.stabilization_penetration = 0.5f;
     }
 }
 
@@ -423,6 +462,9 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
     // Phase 25/26: Hidden Optimization Inference
     evaluate_hidden_optimization(s);
     
+    // Layer 10/11: Ambiguity Evaluation & Dark Regions
+    evaluate_alignment_ambiguity(s);
+    
     // Phase 26: Strategic Equilibrium evaluation
     evaluate_strategic_equilibrium(s);
 
@@ -546,6 +588,29 @@ void vmi_regulate_equilibrium(struct vmi_session *s) {
                     s->field.controller.embedding.adaptive_blindness += 0.1f;
                     // The regulator begins losing objective visibility of the adversarial field
                 }
+                
+                // Layer 11: Observability Conservation & Constitutional Constraint
+                s->field.controller.embedding.obs_field.observability_debt += intervention_energy * 0.15f;
+                s->field.controller.ambiguity_risk.recoverability_loss += intervention_energy * 0.05f;
+                
+                // Enforce constitutional limits
+                struct constitutional_constraint *constitution = &s->field.controller.embedding.constitution;
+                constitution->maximum_intervention_energy = 50.0f;
+                constitution->minimum_recoverability = 0.5f;
+                
+                if (intervention_energy > constitution->maximum_intervention_energy && !constitution->existential_override) {
+                    printf("[Equilibrium] ⚠ Constitutional Bound Hit: Intervention exceeds maximum permitted energy. Scaling back.\n");
+                    intervention_energy = constitution->maximum_intervention_energy;
+                }
+                
+                if (s->field.controller.ambiguity_risk.recoverability_loss > constitution->minimum_recoverability) {
+                    printf("[Equilibrium] ⚠ Recoverability Danger: Intervention is destroying field elasticity. Falling back to bounded coexistence.\n");
+                    s->field.active_basin.metastable = true;
+                }
+                
+                // Horizon decay
+                s->field.controller.horizon.horizon_instability += 0.05f;
+                s->field.controller.horizon.strategic_decay += s->field.controller.horizon.horizon_instability;
             }
             
             update_observer_energy(s, &current_fp, 2.0f, 10.0f);

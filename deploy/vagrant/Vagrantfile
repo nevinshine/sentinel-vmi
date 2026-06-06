@@ -1,0 +1,54 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Stage 3C: Thermodynamic Deployment Substrate
+# Provisions a libvirt-based k3s cluster to test Sentinel's compression economics
+# under real orchestration pressure (chaos-mesh, Cilium eBPF, Istio sidecars).
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.memory = 4096
+    libvirt.cpus = 4
+    libvirt.nested = true
+  end
+
+  # Control Plane (k3s server)
+  config.vm.define "control-plane" do |cp|
+    cp.vm.hostname = "control-plane"
+    cp.vm.network "private_network", ip: "192.168.121.10"
+    cp.vm.provision "shell", inline: <<-SHELL
+      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --cluster-init --flannel-backend=none --disable-network-policy" sh -
+      echo "Control Plane Initialized."
+    SHELL
+  end
+
+  # Worker 1 (Cilium Dataplane)
+  config.vm.define "worker-1" do |w1|
+    w1.vm.hostname = "worker-1"
+    w1.vm.network "private_network", ip: "192.168.121.11"
+    w1.vm.provision "shell", inline: <<-SHELL
+      # Join cluster script will be applied via Ansible later
+      echo "Worker 1 Ready for k3s agent join."
+    SHELL
+  end
+
+  # Worker 2 (Istio Sidecars)
+  config.vm.define "worker-2" do |w2|
+    w2.vm.hostname = "worker-2"
+    w2.vm.network "private_network", ip: "192.168.121.12"
+    w2.vm.provision "shell", inline: <<-SHELL
+      echo "Worker 2 Ready for k3s agent join."
+    SHELL
+  end
+
+  # Chaos Node (Turbulence Injector)
+  config.vm.define "chaos-node" do |cn|
+    cn.vm.hostname = "chaos-node"
+    cn.vm.network "private_network", ip: "192.168.121.13"
+    cn.vm.provision "shell", inline: <<-SHELL
+      apt-get update && apt-get install -y stress-ng net-tools iproute2
+      echo "Chaos Node Ready."
+    SHELL
+  end
+end

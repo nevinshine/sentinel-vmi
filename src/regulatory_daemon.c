@@ -203,16 +203,42 @@ void regulatory_daemon_loop(struct vmi_session *s) {
                 if (zone->active_compression == COMPRESS_FENCE_ONLY && ev->fence_type != FENCE_NONE) {
                     if (ev->fence_type == EV_K8S_DEPLOYMENT || ev->fence_type == EV_K8S_SCALE) {
                         static struct orchestration_wave active_wave = {0};
+                        static struct pressure_history history = {0};
+                        static struct authority_manifold terminal_manifold = {0};
+                        
                         uint64_t deployment_anchor = ev->cr3 & 0xFFFFFFFFFF000000; // Mock stable anchor
                         
                         if (active_wave.authority_root == 0 || active_wave.authority_root != deployment_anchor) {
+                            // Stage 3C: Wave converted to stable authority manifold
+                            if (active_wave.authority_root != 0) {
+                                terminal_manifold.authority_root = active_wave.authority_root;
+                                terminal_manifold.namespace_pressure = active_wave.deployment_pressure;
+                                terminal_manifold.orchestration_entropy = active_wave.authority_entropy;
+                                
+                                // Mock metric: Track manifolds created
+                                s->starvation.starvation_score += 0; // Just to suppress unused, we are storing it in memory though
+                                (void)terminal_manifold; 
+                            }
+                            
                             active_wave.authority_root = deployment_anchor;
                             active_wave.deployment_pressure = 1;
                             active_wave.churn_density = 1;
-                            active_wave.authority_entropy = 100; 
+                            active_wave.authority_entropy = 100;
+                            
+                            // Track periodicity
+                            history.recurring_wave_patterns++;
+                            if (history.recurring_wave_patterns > 10) {
+                                history.rollout_periodicity = 1; 
+                            }
                         } else {
                             active_wave.deployment_pressure++;
                             active_wave.churn_density++;
+                            
+                            // Stage 3C: Periodicity Dampening
+                            // If this is a highly periodic wave (legitimate orchestration), deeply discount its entropy
+                            if (history.rollout_periodicity) {
+                                active_wave.authority_entropy = (active_wave.authority_entropy * 9) / 10;
+                            }
                             
                             // Absorb into wave manifold and skip arena insertion
                             head = (head + 1) % SENSOR_RING_SIZE;

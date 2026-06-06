@@ -237,6 +237,64 @@ struct coherence_zone {
 };
 
 // ──────────────────────────────────────────────
+// Stage 3C: Live Cluster Deployment Substrate
+// ──────────────────────────────────────────────
+
+struct authority_manifold {
+    uint64_t authority_root;
+    uint32_t namespace_pressure;
+    uint32_t orchestration_entropy;
+    uint32_t ebpf_coupling;
+    uint32_t mesh_coupling;
+    uint16_t survivability_weight;
+};
+
+struct pressure_history {
+    uint32_t recurring_wave_patterns;
+    uint32_t authority_recurrence;
+    uint32_t rollout_periodicity;
+    uint32_t synchronization_persistence;
+};
+
+#define SENTINEL_CAPTURE_MAGIC 0x53454D4341505452ULL
+
+struct capture_header {
+    uint64_t magic;
+    uint32_t version_major;
+    uint32_t version_minor;
+    uint64_t capture_start_ns;
+    uint64_t capture_end_ns;
+    uint64_t event_count;
+    uint32_t semantic_event_size;
+    uint32_t header_size;
+    uint64_t feature_bitmap;
+    uint64_t compression_mode;
+    uint64_t reserved[8];
+} __attribute__((packed));
+
+struct replay_semantic_event_v1 {
+    uint32_t delta_ns;
+    uint64_t causal_id;
+    uint64_t cr3;
+    uint64_t rip;
+    uint32_t event_type;
+    uint32_t energy;
+    uint16_t confidence_q8;
+    uint16_t survivability;
+    uint32_t namespace_hash;
+    uint64_t metadata;
+} __attribute__((packed));
+
+struct semantic_capture {
+    uint64_t timestamp_ns;
+    uint32_t event_count;
+    struct replay_semantic_event_v1 *events; 
+};
+
+// src/replay/capture_engine.c
+int vmi_capture_ring_to_disk(struct sensor_ring *ring, const char *capture_dir);
+
+// ──────────────────────────────────────────────
 // Stage 2C: Runtime Survivability & Economics
 // ──────────────────────────────────────────────
 

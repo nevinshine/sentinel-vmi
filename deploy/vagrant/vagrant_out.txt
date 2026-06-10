@@ -1,0 +1,234 @@
+Bringing machine 'control-plane' up with 'libvirt' provider...
+Bringing machine 'worker-1' up with 'libvirt' provider...
+==> control-plane: Checking if box 'generic/ubuntu2204' version '4.3.12' is up to date...
+==> worker-1: Checking if box 'generic/ubuntu2204' version '4.3.12' is up to date...
+==> worker-1: Creating image (snapshot of base box volume).
+==> worker-1: Creating domain with the following settings...
+==> worker-1:  -- Name:              vagrant_worker-1
+==> worker-1:  -- Description:       Source: /home/nevin/sentinel-stack/sentinel-vmi/deploy/vagrant/Vagrantfile
+==> worker-1:  -- Domain type:       kvm
+==> worker-1:  -- Cpus:              4
+==> worker-1:  -- Feature:           acpi
+==> worker-1:  -- Feature:           apic
+==> worker-1:  -- Feature:           pae
+==> worker-1:  -- Clock offset:      utc
+==> worker-1:  -- Memory:            4096M
+==> worker-1:  -- Base box:          generic/ubuntu2204
+==> worker-1:  -- Storage pool:      default
+==> worker-1:  -- Image(vda):        /home/nevin/.local/share/libvirt/images/vagrant_worker-1.img, virtio, 128G
+==> worker-1:  -- Disk driver opts:  cache='default'
+==> worker-1:  -- Graphics Type:     vnc
+==> worker-1:  -- Video Type:        cirrus
+==> worker-1:  -- Video VRAM:        256
+==> worker-1:  -- Video 3D accel:    false
+==> worker-1:  -- Keymap:            en-us
+==> worker-1:  -- TPM Backend:       passthrough
+==> worker-1:  -- INPUT:             type=mouse, bus=ps2
+==> worker-1: Creating shared folders metadata...
+==> worker-1: Starting domain.
+==> worker-1: Removing domain...
+==> worker-1: Deleting the machine folder
+==> worker-1: An error occurred. The error will be shown after all tasks complete.
+==> control-plane: Creating image (snapshot of base box volume).
+==> control-plane: Creating domain with the following settings...
+==> control-plane:  -- Name:              vagrant_control-plane
+==> control-plane:  -- Description:       Source: /home/nevin/sentinel-stack/sentinel-vmi/deploy/vagrant/Vagrantfile
+==> control-plane:  -- Domain type:       kvm
+==> control-plane:  -- Cpus:              4
+==> control-plane:  -- Feature:           acpi
+==> control-plane:  -- Feature:           apic
+==> control-plane:  -- Feature:           pae
+==> control-plane:  -- Clock offset:      utc
+==> control-plane:  -- Memory:            4096M
+==> control-plane:  -- Base box:          generic/ubuntu2204
+==> control-plane:  -- Storage pool:      default
+==> control-plane:  -- Image(vda):        /home/nevin/.local/share/libvirt/images/vagrant_control-plane.img, virtio, 128G
+==> control-plane:  -- Disk driver opts:  cache='default'
+==> control-plane:  -- Graphics Type:     vnc
+==> control-plane:  -- Video Type:        cirrus
+==> control-plane:  -- Video VRAM:        256
+==> control-plane:  -- Video 3D accel:    false
+==> control-plane:  -- Keymap:            en-us
+==> control-plane:  -- TPM Backend:       passthrough
+==> control-plane:  -- INPUT:             type=mouse, bus=ps2
+==> control-plane: Creating shared folders metadata...
+==> control-plane: Starting domain.
+==> control-plane: Removing domain...
+==> control-plane: Deleting the machine folder
+==> control-plane: An error occurred. The error will be shown after all tasks complete.
+An error occurred while executing multiple actions in parallel.
+Any errors that occurred are shown below.
+
+An unexpected error occurred when executing the action on the
+'control-plane' machine. Please report this as a bug:
+
+Call to virDomainCreate failed: Network not found: no network with matching name 'vagrant-libvirt'
+
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/requests/compute/vm_action.rb:7:in 'Libvirt::Domain#create'
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/requests/compute/vm_action.rb:7:in 'Fog::Libvirt::Compute::Shared#vm_action'
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/models/compute/server.rb:81:in 'Fog::Libvirt::Compute::Server#start'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/start_domain.rb:546:in 'VagrantPlugins::ProviderLibvirt::Action::StartDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/set_boot_order.rb:22:in 'VagrantPlugins::ProviderLibvirt::Action::SetBootOrder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/share_folders.rb:22:in 'VagrantPlugins::ProviderLibvirt::Action::ShareFolders#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/prepare_nfs_settings.rb:21:in 'VagrantPlugins::ProviderLibvirt::Action::PrepareNFSSettings#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/synced_folders.rb:87:in 'Vagrant::Action::Builtin::SyncedFolders#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/delayed.rb:19:in 'Vagrant::Action::Builtin::Delayed#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/synced_folder_cleanup.rb:28:in 'Vagrant::Action::Builtin::SyncedFolderCleanup#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/plugins/synced_folders/nfs/action_cleanup.rb:25:in 'VagrantPlugins::SyncedFolderNFS::ActionCleanup#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/prepare_nfs_valid_ids.rb:14:in 'VagrantPlugins::ProviderLibvirt::Action::PrepareNFSValidIds#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_network_interfaces.rb:197:in 'VagrantPlugins::ProviderLibvirt::Action::CreateNetworkInterfaces#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_networks.rb:40:in 'VagrantPlugins::ProviderLibvirt::Action::CreateNetworks#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_domain.rb:452:in 'VagrantPlugins::ProviderLibvirt::Action::CreateDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/resolve_disk_settings.rb:144:in 'VagrantPlugins::ProviderLibvirt::Action::ResolveDiskSettings#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_domain_volume.rb:97:in 'VagrantPlugins::ProviderLibvirt::Action::CreateDomainVolume#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/handle_box_image.rb:127:in 'VagrantPlugins::ProviderLibvirt::Action::HandleBoxImage#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/handle_box.rb:56:in 'Vagrant::Action::Builtin::HandleBox#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/handle_storage_pool.rb:63:in 'VagrantPlugins::ProviderLibvirt::Action::HandleStoragePool#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/set_name_of_domain.rb:34:in 'VagrantPlugins::ProviderLibvirt::Action::SetNameOfDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/provision.rb:80:in 'Vagrant::Action::Builtin::Provision#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/cleanup_on_failure.rb:21:in 'VagrantPlugins::ProviderLibvirt::Action::CleanupOnFailure#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/box_check_outdated.rb:93:in 'Vagrant::Action::Builtin::BoxCheckOutdated#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/config_validate.rb:25:in 'Vagrant::Action::Builtin::ConfigValidate#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:248:in 'Vagrant::Machine#action_raw'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:217:in 'block in Vagrant::Machine#action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/environment.rb:631:in 'Vagrant::Environment#lock'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:203:in 'Method#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:203:in 'Vagrant::Machine#action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/batch_action.rb:86:in 'block (2 levels) in Vagrant::BatchAction#run'
+
+An unexpected error occurred when executing the action on the
+'worker-1' machine. Please report this as a bug:
+
+Call to virDomainCreate failed: Network not found: no network with matching name 'vagrant-libvirt'
+
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/requests/compute/vm_action.rb:7:in 'Libvirt::Domain#create'
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/requests/compute/vm_action.rb:7:in 'Fog::Libvirt::Compute::Shared#vm_action'
+/usr/share/gems/gems/fog-libvirt-0.13.1/lib/fog/libvirt/models/compute/server.rb:81:in 'Fog::Libvirt::Compute::Server#start'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/start_domain.rb:546:in 'VagrantPlugins::ProviderLibvirt::Action::StartDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/set_boot_order.rb:22:in 'VagrantPlugins::ProviderLibvirt::Action::SetBootOrder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/share_folders.rb:22:in 'VagrantPlugins::ProviderLibvirt::Action::ShareFolders#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/prepare_nfs_settings.rb:21:in 'VagrantPlugins::ProviderLibvirt::Action::PrepareNFSSettings#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/synced_folders.rb:87:in 'Vagrant::Action::Builtin::SyncedFolders#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/delayed.rb:19:in 'Vagrant::Action::Builtin::Delayed#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/synced_folder_cleanup.rb:28:in 'Vagrant::Action::Builtin::SyncedFolderCleanup#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/plugins/synced_folders/nfs/action_cleanup.rb:25:in 'VagrantPlugins::SyncedFolderNFS::ActionCleanup#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/prepare_nfs_valid_ids.rb:14:in 'VagrantPlugins::ProviderLibvirt::Action::PrepareNFSValidIds#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_network_interfaces.rb:197:in 'VagrantPlugins::ProviderLibvirt::Action::CreateNetworkInterfaces#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_networks.rb:40:in 'VagrantPlugins::ProviderLibvirt::Action::CreateNetworks#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_domain.rb:452:in 'VagrantPlugins::ProviderLibvirt::Action::CreateDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/resolve_disk_settings.rb:144:in 'VagrantPlugins::ProviderLibvirt::Action::ResolveDiskSettings#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/create_domain_volume.rb:97:in 'VagrantPlugins::ProviderLibvirt::Action::CreateDomainVolume#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/handle_box_image.rb:127:in 'VagrantPlugins::ProviderLibvirt::Action::HandleBoxImage#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/handle_box.rb:56:in 'Vagrant::Action::Builtin::HandleBox#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/handle_storage_pool.rb:63:in 'VagrantPlugins::ProviderLibvirt::Action::HandleStoragePool#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/set_name_of_domain.rb:34:in 'VagrantPlugins::ProviderLibvirt::Action::SetNameOfDomain#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/provision.rb:80:in 'Vagrant::Action::Builtin::Provision#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-libvirt-0.11.2/lib/vagrant-libvirt/action/cleanup_on_failure.rb:21:in 'VagrantPlugins::ProviderLibvirt::Action::CleanupOnFailure#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:127:in 'block in Vagrant::Action::Warden#finalize_action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/call.rb:53:in 'Vagrant::Action::Builtin::Call#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/box_check_outdated.rb:93:in 'Vagrant::Action::Builtin::BoxCheckOutdated#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builtin/config_validate.rb:25:in 'Vagrant::Action::Builtin::ConfigValidate#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/warden.rb:48:in 'Vagrant::Action::Warden#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/builder.rb:180:in 'Vagrant::Action::Builder#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'block in Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/util/busy.rb:19:in 'Vagrant::Util::Busy.busy'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/action/runner.rb:101:in 'Vagrant::Action::Runner#run'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:248:in 'Vagrant::Machine#action_raw'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:217:in 'block in Vagrant::Machine#action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/environment.rb:631:in 'Vagrant::Environment#lock'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:203:in 'Method#call'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/machine.rb:203:in 'Vagrant::Machine#action'
+/usr/share/vagrant/gems/gems/vagrant-2.3.4/lib/vagrant/batch_action.rb:86:in 'block (2 levels) in Vagrant::BatchAction#run'

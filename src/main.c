@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static volatile int running = 1;
@@ -33,13 +34,16 @@ static void print_banner(void) {
 
 int main(int argc, char *argv[]) {
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <vm-name>\n", argv[0]);
+    fprintf(stderr, "Usage: %s <vm-name> [--capture-passive]\n", argv[0]);
     fprintf(stderr, "\n");
     fprintf(stderr, "  vm-name: Name of the QEMU/KVM VM to introspect\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  CRITICAL: Run this INSIDE a nested KVM VM.\n");
-    fprintf(stderr, "            NEVER on the host machine.\n");
     return 1;
+  }
+  
+  int is_passive = 0;
+  if (argc >= 3 && strcmp(argv[2], "--capture-passive") == 0) {
+      is_passive = 1;
   }
 
   signal(SIGINT, handle_signal);
@@ -107,6 +111,10 @@ int main(int argc, char *argv[]) {
   // ────────────────────────────────────────
   printf("\n[VMI] ═══════════════════════════════════════\n");
   printf("[VMI] All phases armed. Entering event loop.\n");
+  if (is_passive) {
+      printf("[VMI] Mode: CAPTURE_PASSIVE (Dumping telemetry to capture/semantic_replay)\n");
+      session->active_capture_mode = CAPTURE_PASSIVE;
+  }
   printf("[VMI] Press Ctrl+C to stop.\n");
   printf("[VMI] ═══════════════════════════════════════\n\n");
 
@@ -134,6 +142,14 @@ int main(int argc, char *argv[]) {
 
     // Flush queued alerts
     bridge_flush_alerts();
+    
+    if (session->active_capture_mode == CAPTURE_PASSIVE) {
+        for (int i = 0; i < session->nr_vcpus; i++) {
+            vmi_capture_ring_to_disk(&session->vcpu_rings[i], "capture/semantic_replay");
+        }
+    } else {
+        regulatory_daemon_loop(session);
+    }
 
     usleep(scan_interval_ms * 1000);
   }

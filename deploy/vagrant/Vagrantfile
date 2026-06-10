@@ -6,8 +6,11 @@
 # under real orchestration pressure (chaos-mesh, Cilium eBPF, Istio sidecars).
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/jammy64"
+  config.vm.box = "generic/ubuntu2204"
   config.vm.provider :libvirt do |libvirt|
+    libvirt.uri = "qemu:///system"
+    libvirt.qemu_use_session = false
+    libvirt.storage_pool_name = "images"
     libvirt.memory = 4096
     libvirt.cpus = 4
     libvirt.nested = true

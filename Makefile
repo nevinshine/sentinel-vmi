@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -O2 -g \
+CFLAGS = -Wall -Wextra -Werror -O3 -g -mavx2 -mfma \
          -I./include \
          -D_GNU_SOURCE
 
@@ -25,7 +25,12 @@ SRCS = src/main.c \
        src/integrity.c \
        src/differential.c \
        src/actor.c \
-       src/ept/ept_mediation.c
+       src/ept/ept_mediation.c \
+       src/regions.c \
+       src/regulatory_daemon.c \
+       src/equilibrium.c \
+       src/stabilization.c \
+       src/replay/capture_engine.c
 
 OBJS = $(SRCS:.c=.o)
 TARGET = sentinel-vmi
@@ -76,4 +81,5 @@ test_snapshot_bin: tests/test_snapshot.c src/snapshot.c src/memory.c src/task_wa
 test: test-unit test-snapshot
 
 clean:
-
+	rm -f $(OBJS) $(TARGET)
+	rm -f tests/*.o test_memory test_task_walker test_npt test_bridge test_snapshot_bin test_collapse_bin bench/certainty_per_megacycle/*.o

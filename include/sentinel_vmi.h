@@ -59,7 +59,43 @@ enum semantic_fence_type {
     EV_K8S_EBPF_ATTACH,
     EV_BPF_MAP_MUTATION,
     EV_BPF_TAILCALL_MUTATION,
-    EV_BPF_PRIV_ESCALATION
+    EV_BPF_PRIV_ESCALATION,
+    EV_CLUSTER_EPOCH
+};
+
+// ──────────────────────────────────────────────
+// Stage 3C Phase 1: Thermodynamic Capture
+// ──────────────────────────────────────────────
+enum capture_mode {
+    CAPTURE_PASSIVE = 0,
+    CAPTURE_REPLAY_ONLY,
+    CAPTURE_SHADOW_RECONSTRUCTION,
+    CAPTURE_RECONSTRUCTION,
+    CAPTURE_FULL_REGULATION
+};
+
+enum cluster_epoch_type {
+    EPOCH_CLUSTER_BOOT,
+    EPOCH_DEPLOYMENT_APPLY,
+    EPOCH_NODE_DRAIN,
+    EPOCH_AUTOSCALER_SURGE,
+    EPOCH_CILIUM_POLICY_SYNC,
+    EPOCH_CHAOS_INJECTION
+};
+
+struct capture_integrity {
+    uint64_t dropped_events;
+    uint64_t orphan_collapses;
+    uint64_t arena_resets;
+    uint64_t compression_transitions;
+};
+
+struct convergence_window {
+    uint64_t authority_root;
+    uint64_t first_seen_ns;
+    uint64_t last_seen_ns;
+    uint32_t convergence_half_life;
+    uint32_t fragmentation_events;
 };
 
 // ──────────────────────────────────────────────
@@ -269,7 +305,8 @@ struct capture_header {
     uint32_t header_size;
     uint64_t feature_bitmap;
     uint64_t compression_mode;
-    uint64_t reserved[8];
+    struct capture_integrity integrity;
+    uint64_t reserved[4]; // Reduced reserved space
 } __attribute__((packed));
 
 struct replay_semantic_event_v1 {
@@ -1365,6 +1402,10 @@ struct vmi_session {
   uint32_t semantic_debt;
   struct starvation_tracker starvation;
   enum collapse_mode active_collapse;
+  
+  // Stage 3C Phase 1: Thermodynamic Capture
+  enum capture_mode active_capture_mode;
+  float manifold_stability_score;
 };
 
 // ──────────────────────────────────────────────

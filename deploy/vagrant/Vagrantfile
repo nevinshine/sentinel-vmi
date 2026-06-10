@@ -21,13 +21,14 @@ Vagrant.configure("2") do |config|
     cp.vm.hostname = "control-plane"
     cp.vm.network "private_network", ip: "192.168.121.10"
     cp.vm.provision "shell", inline: <<-SHELL
-      curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --cluster-init --flannel-backend=none --disable network-policy --token=sentinel_secret" sh -
+      set -ex
+      curl -sfL https://get.k3s.io | sh -s - server --cluster-init --flannel-backend=none --disable-network-policy --token=sentinel_secret
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
       echo "Waiting for k3s server to be ready..."
-      until /usr/local/bin/k3s kubectl get node 2>/dev/null | grep -q "NotReady\\|Ready"; do sleep 2; done
+      until kubectl get node 2>/dev/null | grep -E -q "NotReady|Ready"; do sleep 2; done
       echo "Control Plane Initialized. Installing Cilium..."
       curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
       tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
       /usr/local/bin/cilium install
     SHELL
   end
@@ -37,6 +38,7 @@ Vagrant.configure("2") do |config|
     w1.vm.hostname = "worker-1"
     w1.vm.network "private_network", ip: "192.168.121.11"
     w1.vm.provision "shell", inline: <<-SHELL
+      set -ex
       curl -sfL https://get.k3s.io | K3S_URL=https://192.168.121.10:6443 K3S_TOKEN=sentinel_secret sh -
       echo "Worker 1 Joined cluster."
     SHELL

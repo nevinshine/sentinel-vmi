@@ -19,7 +19,7 @@ Vagrant.configure("2") do |config|
   # Control Plane (k3s server)
   config.vm.define "control-plane" do |cp|
     cp.vm.hostname = "control-plane"
-    cp.vm.network "private_network", ip: "192.168.121.10"
+    cp.vm.network "private_network", ip: "192.168.50.10"
     cp.vm.provision "shell", inline: <<-SHELL
       set -ex
       curl -v -fL https://get.k3s.io -o install.sh
@@ -37,11 +37,11 @@ Vagrant.configure("2") do |config|
   # Worker 1 (Cilium Dataplane)
   config.vm.define "worker-1" do |w1|
     w1.vm.hostname = "worker-1"
-    w1.vm.network "private_network", ip: "192.168.121.11"
+    w1.vm.network "private_network", ip: "192.168.50.11"
     w1.vm.provision "shell", inline: <<-SHELL
       set -ex
       curl -v -fL https://get.k3s.io -o install.sh
-      K3S_URL=https://192.168.121.10:6443 K3S_TOKEN=sentinel_secret sh install.sh
+      K3S_URL=https://192.168.50.10:6443 K3S_TOKEN=sentinel_secret sh install.sh
       echo "Worker 1 Joined cluster."
     SHELL
   end
@@ -49,7 +49,7 @@ Vagrant.configure("2") do |config|
   # Worker 2 (Istio Sidecars)
   config.vm.define "worker-2" do |w2|
     w2.vm.hostname = "worker-2"
-    w2.vm.network "private_network", ip: "192.168.121.12"
+    w2.vm.network "private_network", ip: "192.168.50.12"
     w2.vm.provision "shell", inline: <<-SHELL
       echo "Worker 2 Ready for k3s agent join."
     SHELL
@@ -58,7 +58,7 @@ Vagrant.configure("2") do |config|
   # Chaos Node (Turbulence Injector)
   config.vm.define "chaos-node" do |cn|
     cn.vm.hostname = "chaos-node"
-    cn.vm.network "private_network", ip: "192.168.121.13"
+    cn.vm.network "private_network", ip: "192.168.50.13"
     cn.vm.provision "shell", inline: <<-SHELL
       apt-get update && apt-get install -y stress-ng net-tools iproute2
       echo "Chaos Node Ready."

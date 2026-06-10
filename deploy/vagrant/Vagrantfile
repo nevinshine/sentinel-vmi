@@ -23,12 +23,12 @@ Vagrant.configure("2") do |config|
     cp.vm.provision "shell", inline: <<-SHELL
       curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --cluster-init --flannel-backend=none --disable-network-policy --token=sentinel_secret" sh -
       echo "Waiting for k3s server to be ready..."
-      until k3s kubectl get node | grep -q "Ready"; do sleep 2; done
+      until /usr/local/bin/k3s kubectl get node 2>/dev/null | grep -q "Ready"; do sleep 2; done
       echo "Control Plane Initialized. Installing Cilium..."
       curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
       tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
       export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      cilium install
+      /usr/local/bin/cilium install
     SHELL
   end
 

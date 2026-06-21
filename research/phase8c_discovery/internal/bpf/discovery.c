@@ -15,6 +15,7 @@ struct request_event {
     __u32 tid;
     char method[16];
     char host[64];
+    unsigned char trace_id[16];
 };
 
 // Force BTF generation for the Go struct generator
@@ -69,11 +70,20 @@ int uprobe_roundtrip(struct pt_regs *ctx) {
     }
 
     // Read context.Context (interface)
-    // An interface in Go is {itab *itab, data unsafe.Pointer}
-    // We want the data pointer.
     __u64 ctx_data_ptr = 0;
     bpf_probe_read_user(&ctx_data_ptr, sizeof(ctx_data_ptr), (void *)(req_ptr + REQ_CTX_OFFSET + 8));
     event.context_ptr = ctx_data_ptr;
+
+    // Traverse context to find OTel TraceID
+    // 1. ctx is *context.valueCtx. The 'val' interface is at offset 32. 
+    //    'val.data' (the pointer to the span) is at offset 32 + 8 = 40.
+    __u64 span_ptr = 0;
+    bpf_probe_read_user(&span_ptr, sizeof(span_ptr), (void *)(ctx_data_ptr + 40));
+    
+    // 2. span is *trace.recordingSpan. The 'spanContext.traceID' is at offset 192.
+    if (span_ptr != 0) {
+        bpf_probe_read_user(event.trace_id, sizeof(event.trace_id), (void *)(span_ptr + 192));
+    }
 
     // Emit event
     bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));

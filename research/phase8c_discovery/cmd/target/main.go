@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,6 +14,8 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/perf"
 	"github.com/cilium/ebpf/rlimit"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/sdk/trace"
 	
 	"phase8c_discovery/internal/bpf"
 )
@@ -89,19 +92,27 @@ func main() {
 	}
 
 	expectedRequests := 10
+	
+	tp := trace.NewTracerProvider()
+	otel.SetTracerProvider(tp)
+	tracer := tp.Tracer("test-client")
+	
 	for i := 0; i < expectedRequests; i++ {
-		req, err := http.NewRequestWithContext(context.Background(), "GET", "http://1.1.1.1:80", nil)
+		ctx, span := tracer.Start(context.Background(), "http-request")
+		
+		req, err := http.NewRequestWithContext(ctx, "GET", "http://1.1.1.1:80", nil)
 		if err != nil {
 			log.Fatalf("Failed to create request: %v", err)
 		}
 		
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("Request failed (expected if 1.1.1.1 ignores us, but RoundTrip still runs): %v", err)
+			log.Printf("Request failed: %v", err)
 		} else {
 			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 		}
+		span.End()
 	}
 
 	log.Println("[*] Done sending requests. Collecting events...")
@@ -113,10 +124,11 @@ func main() {
 		case ev := <-eventChan:
 			method := cstring(ev.Method[:])
 			host := cstring(ev.Host[:])
+			traceId := fmt.Sprintf("%x", ev.TraceId)
 			if method == "WRITE" {
-				log.Printf("=> [Write]  req_ptr: 0x%x | ctx_ptr: 0x%x", ev.RequestPtr, ev.ContextPtr)
+				// Write uprobe is skipped to reduce noise
 			} else {
-				log.Printf("=> [RoundT] req_ptr: 0x%x | ctx_ptr: 0x%x | %s %s", ev.RequestPtr, ev.ContextPtr, method, host)
+				log.Printf("=> [RoundT] req_ptr: 0x%x | trace_id: %s", ev.RequestPtr, traceId)
 				received++
 			}
 		default:

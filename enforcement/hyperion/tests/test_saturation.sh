@@ -65,7 +65,7 @@ for COUNT in 100 1000 10000 16000 20000; do
     
     LOAD_FACTOR=$(echo "scale=2; ($ENTRIES_USED / $MAX_ENTRIES) * 100" | bc)
     
-    echo "$COUNT | $LOAD_FACTOR% ($ENTRIES_USED/$MAX_ENTRIES) | ~"
+    echo "$COUNT | $LOAD_FACTOR% ($ENTRIES_USED/$MAX_ENTRIES) | ${DUR_MS}ms"
 done
 
 echo "[*] Tearing down daemon..."

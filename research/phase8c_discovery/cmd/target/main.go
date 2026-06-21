@@ -128,7 +128,7 @@ func main() {
 			if method == "WRITE" {
 				// Write uprobe is skipped to reduce noise
 			} else {
-				log.Printf("=> [RoundT] req_ptr: 0x%x | trace_id: %s", ev.RequestPtr, traceId)
+				log.Printf("=> [RoundT] req_ptr: 0x%x | trace_id: %s | %s %s", ev.RequestPtr, traceId, method, host)
 				received++
 			}
 		default:

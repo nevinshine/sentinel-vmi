@@ -46,6 +46,7 @@ struct flow_key {
 struct flow_attribution {
     __u64 behavior_id;
     __u64 first_seen_ns;
+    __u64 last_seen_ns;
     __u64 packet_count;
 };
 
@@ -134,24 +135,24 @@ int cgroup_connect4(struct bpf_sock_addr *ctx) {
     return 1;
 }
 
-// HOOK 2: cgroup_skb/egress (recover context from socket and output to flow_attribution)
-SEC("cgroup_skb/egress")
-int egress__packet_capture(struct __sk_buff *skb) {
+// HOOK 2: tc/egress (recover context from socket and output to flow_attribution)
+SEC("tc")
+int tc_egress(struct __sk_buff *skb) {
     struct bpf_sock *sk = skb->sk;
-    if (!sk) return 1;
+    if (!sk) return 0; // TC_ACT_OK
 
     struct bpf_sock *full_sk = bpf_sk_fullsock(sk);
-    if (!full_sk) return 1;
+    if (!full_sk) return 0;
 
     // Only process TCP
     if (full_sk->protocol != IPPROTO_TCP) {
-        return 1;
+        return 0;
     }
 
     // Try to recover the behavior tag from the socket
     struct behavior_tag *tag = bpf_sk_storage_get(&socket_tags, sk, 0, 0);
     if (!tag) {
-        return 1; // No behavior tag
+        return 0; // No behavior tag
     }
 
     // Extract 5-tuple from full socket
@@ -166,13 +167,16 @@ int egress__packet_capture(struct __sk_buff *skb) {
     struct flow_attribution *flow = bpf_map_lookup_elem(&flow_map, &key);
     if (flow) {
         __sync_fetch_and_add(&flow->packet_count, 1);
+        flow->last_seen_ns = bpf_ktime_get_ns();
+        flow->behavior_id = tag->behavior_id;
     } else {
         struct flow_attribution new_flow = {};
         new_flow.behavior_id = tag->behavior_id;
         new_flow.first_seen_ns = bpf_ktime_get_ns();
+        new_flow.last_seen_ns = new_flow.first_seen_ns;
         new_flow.packet_count = 1;
         bpf_map_update_elem(&flow_map, &key, &new_flow, BPF_ANY);
     }
 
-    return 1; // Allow packet
+    return 0; // TC_ACT_OK
 }

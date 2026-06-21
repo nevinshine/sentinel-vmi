@@ -44,18 +44,31 @@ func main() {
 	defer cgroupConn.Close()
 	log.Println("[+] Attached cgroup/connect4 to", cgroupPath)
 
-	// Attach cgroup_skb/egress hook
-	// For Experiment 1, we will attach to the root cgroup v2.
-	cgroupL, err := link.AttachCgroup(link.CgroupOptions{
-		Path:    cgroupPath,
-		Attach:  ebpf.AttachCGroupInetEgress,
-		Program: objs.EgressPacketCapture,
+	// Attach tc/egress hook to the primary network interface
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		log.Fatalf("Failed to get interfaces: %v", err)
+	}
+	var defaultIface net.Interface
+	for _, iface := range ifaces {
+		// Pick the first non-loopback up interface
+		if iface.Flags&net.FlagUp != 0 && iface.Flags&net.FlagLoopback == 0 {
+			defaultIface = iface
+			break
+		}
+	}
+	log.Printf("[*] Using interface %s (%d) for TC egress hook", defaultIface.Name, defaultIface.Index)
+	
+	tcxL, err := link.AttachTCX(link.TCXOptions{
+		Program:   objs.TcEgress,
+		Interface: defaultIface.Index,
+		Attach:    ebpf.AttachTCXEgress,
 	})
 	if err != nil {
-		log.Fatalf("Failed to attach cgroup_skb: %v", err)
+		log.Fatalf("Failed to attach tc/egress: %v", err)
 	}
-	defer cgroupL.Close()
-	log.Println("[+] Attached cgroup_skb/egress to", cgroupPath)
+	defer tcxL.Close()
+	log.Println("[+] Attached tc/egress to", defaultIface.Name)
 
 	// Set up Experiment 1 Fake Behavior
 	pid := uint64(os.Getpid())

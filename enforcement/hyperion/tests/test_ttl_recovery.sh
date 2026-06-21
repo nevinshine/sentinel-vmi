@@ -13,6 +13,12 @@ sudo rm -f ../decision_bus.jsonl
 # Build everything
 make build-release
 
+# Load XDP on loopback so the map is pinned
+echo "[*] Loading XDP on lo..."
+sudo ./bin/flowctl load lo >/dev/null &
+FLOWCTL_PID=$!
+sleep 2
+
 # Start hyperiond in the background
 touch decision_bus.jsonl
 sudo ./bin/hyperiond &
@@ -55,4 +61,5 @@ fi
 
 # Cleanup
 sudo kill -9 $NEW_PID
+sudo kill -9 $FLOWCTL_PID || true
 echo "[*] TTL Recovery test complete."

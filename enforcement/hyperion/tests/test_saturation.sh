@@ -20,6 +20,10 @@ echo "-----------------------------------"
 sudo rm -f /sys/fs/bpf/hyperion_blocked_flows || true
 
 echo "[*] Loading XDP and spinning up daemon..."
+sudo ./bin/flowctl load lo >/dev/null &
+FLOWCTL_PID=$!
+sleep 2
+
 touch decision_bus.jsonl
 sudo ./bin/hyperiond > /dev/null 2>&1 &
 HYP_PID=$!
@@ -62,5 +66,6 @@ done
 
 echo "[*] Tearing down daemon..."
 sudo kill -9 $HYP_PID
+sudo kill -9 $FLOWCTL_PID || true
 sudo rm -f bulk_inject.jsonl decision_bus.jsonl
 echo "[*] Saturation Benchmark Complete."

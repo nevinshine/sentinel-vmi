@@ -5,10 +5,9 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"encoding/binary"
 	"syscall"
 	"time"
-	"encoding/binary"
-	"fmt"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"

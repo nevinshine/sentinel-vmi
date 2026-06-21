@@ -30,13 +30,19 @@ func main() {
 	}
 	defer objs.Close()
 
-	// Attach kprobe to tcp_connect
-	kp, err := link.Kprobe("tcp_connect", objs.KprobeTcpConnect, nil)
+	// Attach cgroup/connect4 hook
+	// For Experiment 1, we will attach to the root cgroup v2.
+	cgroupPath := "/sys/fs/cgroup"
+	cgroupConn, err := link.AttachCgroup(link.CgroupOptions{
+		Path:    cgroupPath,
+		Attach:  ebpf.AttachCGroupInet4Connect,
+		Program: objs.CgroupConnect4,
+	})
 	if err != nil {
-		log.Fatalf("Failed to attach tcp_connect kprobe: %v", err)
+		log.Fatalf("Failed to attach cgroup/connect4: %v", err)
 	}
-	defer kp.Close()
-	log.Println("[+] Attached kprobe/tcp_connect")
+	defer cgroupConn.Close()
+	log.Println("[+] Attached cgroup/connect4 to", cgroupPath)
 
 	// Attach cgroup_skb/egress hook
 	// For Experiment 1, we will attach to the root cgroup v2.

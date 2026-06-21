@@ -103,18 +103,18 @@ int tracepoint__syscalls__sys_enter_connect(struct trace_event_raw_sys_enter *ct
     return 0;
 }
 
-// HOOK 1b: kprobe/tcp_connect
-// This gives us direct access to `struct sock *sk`
-SEC("kprobe/tcp_connect")
-int kprobe__tcp_connect(struct pt_regs *ctx) {
-    struct sock *sk = (struct sock *)PT_REGS_PARM1(ctx);
-    if (!sk) return 0;
+// HOOK 1b: cgroup/connect4
+// This gives us direct access to `struct bpf_sock_addr *ctx`
+SEC("cgroup/connect4")
+int cgroup_connect4(struct bpf_sock_addr *ctx) {
+    struct bpf_sock *sk = ctx->sk;
+    if (!sk) return 1; // return 1 to allow connect
 
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     
     struct behavior_context *bctx = bpf_map_lookup_elem(&behavior_map, &pid_tgid);
     if (!bctx) {
-        return 0;
+        return 1;
     }
 
     struct process_context *pctx = bpf_map_lookup_elem(&process_map, &pid_tgid);
@@ -131,7 +131,7 @@ int kprobe__tcp_connect(struct pt_regs *ctx) {
         }
     }
 
-    return 0;
+    return 1;
 }
 
 // HOOK 2: cgroup_skb/egress (recover context from socket and output to flow_attribution)

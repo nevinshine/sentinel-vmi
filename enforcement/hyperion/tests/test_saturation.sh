@@ -19,8 +19,12 @@ echo "-----------------------------------"
 # Clean the map by detaching and re-attaching if needed, but for now we just delete.
 sudo rm -f /sys/fs/bpf/hyperion_blocked_flows || true
 
+# Setup dummy interface
+sudo ip link add test1 type dummy || true
+sudo ip link set test1 up
+
 echo "[*] Loading XDP and spinning up daemon..."
-sudo ./bin/flowctl load lo >/dev/null &
+sudo ./bin/flowctl load test1 >/dev/null &
 FLOWCTL_PID=$!
 sleep 2
 

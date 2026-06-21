@@ -13,9 +13,13 @@ sudo rm -f ../decision_bus.jsonl
 # Build everything
 make build-release
 
-# Load XDP on loopback so the map is pinned
-echo "[*] Loading XDP on lo..."
-sudo ./bin/flowctl load lo >/dev/null &
+# Setup dummy interface
+sudo ip link add test0 type dummy || true
+sudo ip link set test0 up
+
+# Load XDP on dummy so the map is pinned
+echo "[*] Loading XDP on test0..."
+sudo ./bin/flowctl load test0 >/dev/null &
 FLOWCTL_PID=$!
 sleep 2
 

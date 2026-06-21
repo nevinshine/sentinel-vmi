@@ -110,14 +110,14 @@ int cgroup_connect4(struct bpf_sock_addr *ctx) {
     struct bpf_sock *sk = ctx->sk;
     if (!sk) return 1; // return 1 to allow connect
 
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
+    __u64 tgid = bpf_get_current_pid_tgid() >> 32;
     
-    struct behavior_context *bctx = bpf_map_lookup_elem(&behavior_map, &pid_tgid);
+    struct behavior_context *bctx = bpf_map_lookup_elem(&behavior_map, &tgid);
     if (!bctx) {
         return 1;
     }
 
-    struct process_context *pctx = bpf_map_lookup_elem(&process_map, &pid_tgid);
+    struct process_context *pctx = bpf_map_lookup_elem(&process_map, &tgid);
 
     // Get or create socket local storage
     struct behavior_tag *tag = bpf_sk_storage_get(&socket_tags, sk, 0, BPF_SK_STORAGE_GET_F_CREATE);

@@ -138,12 +138,13 @@ int kprobe__tcp_connect(struct pt_regs *ctx) {
 SEC("cgroup_skb/egress")
 int egress__packet_capture(struct __sk_buff *skb) {
     struct bpf_sock *sk = skb->sk;
-    if (!sk) {
-        return 1; // Allow packet
-    }
+    if (!sk) return 1;
+
+    struct bpf_sock *full_sk = bpf_sk_fullsock(sk);
+    if (!full_sk) return 1;
 
     // Only process TCP
-    if (sk->protocol != IPPROTO_TCP) {
+    if (full_sk->protocol != IPPROTO_TCP) {
         return 1;
     }
 
@@ -153,12 +154,12 @@ int egress__packet_capture(struct __sk_buff *skb) {
         return 1; // No behavior tag
     }
 
-    // Extract 5-tuple from skb directly
+    // Extract 5-tuple from full socket
     struct flow_key key = {};
-    key.src_ip = skb->local_ip4;
-    key.dst_ip = skb->remote_ip4;
-    key.src_port = skb->local_port;
-    key.dst_port = bpf_ntohs(skb->remote_port); // bpf_sock dst_port is in network byte order usually
+    key.src_ip = full_sk->src_ip4;
+    key.dst_ip = full_sk->dst_ip4;
+    key.src_port = full_sk->src_port;
+    key.dst_port = bpf_ntohs(full_sk->dst_port);
     key.protocol = IPPROTO_TCP;
 
     // Update flow_attribution

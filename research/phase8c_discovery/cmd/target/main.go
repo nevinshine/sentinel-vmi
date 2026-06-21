@@ -37,9 +37,16 @@ func main() {
 	// Attach uprobe to RoundTrip
 	up, err := ex.Uprobe("net/http.(*Transport).RoundTrip", objs.UprobeRoundtrip, nil)
 	if err != nil {
-		log.Fatalf("Failed to attach uprobe: %v", err)
+		log.Fatalf("Failed to attach uprobe RoundTrip: %v", err)
 	}
 	defer up.Close()
+
+	// Attach uprobe to (*Request).write
+	upWrite, err := ex.Uprobe("net/http.(*Request).write", objs.UprobeRequestWrite, nil)
+	if err != nil {
+		log.Fatalf("Failed to attach uprobe write: %v", err)
+	}
+	defer upWrite.Close()
 
 	// Start Perf Reader
 	rd, err := perf.NewReader(objs.Events, os.Getpagesize())
@@ -106,8 +113,12 @@ func main() {
 		case ev := <-eventChan:
 			method := cstring(ev.Method[:])
 			host := cstring(ev.Host[:])
-			log.Printf("=> [Uprobe] req_ptr: 0x%x | ctx_ptr: 0x%x | %s %s", ev.RequestPtr, ev.ContextPtr, method, host)
-			received++
+			if method == "WRITE" {
+				log.Printf("=> [Write]  req_ptr: 0x%x | ctx_ptr: 0x%x", ev.RequestPtr, ev.ContextPtr)
+			} else {
+				log.Printf("=> [RoundT] req_ptr: 0x%x | ctx_ptr: 0x%x | %s %s", ev.RequestPtr, ev.ContextPtr, method, host)
+				received++
+			}
 		default:
 			log.Printf("[*] Result: Sent %d, Recovered %d", expectedRequests, received)
 			if received == expectedRequests {

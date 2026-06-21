@@ -80,3 +80,27 @@ int uprobe_roundtrip(struct pt_regs *ctx) {
 
     return 0;
 }
+
+SEC("uprobe/Request_write")
+int uprobe_request_write(struct pt_regs *ctx) {
+    struct request_event event = {};
+    
+    // In Go ABI, receiver (*http.Request) is in AX
+    __u64 req_ptr = ctx->ax;
+    if (!req_ptr) return 0;
+
+    event.request_ptr = req_ptr;
+    event.timestamp_ns = bpf_ktime_get_ns();
+    
+    // Read ctx to verify it matches
+    __u64 ctx_data_ptr = 0;
+    bpf_probe_read_user(&ctx_data_ptr, sizeof(ctx_data_ptr), (void *)(req_ptr + REQ_CTX_OFFSET + 8));
+    event.context_ptr = ctx_data_ptr;
+    
+    // Use a special method string to indicate this is the write phase
+    char phase[] = "WRITE";
+    bpf_probe_read_kernel(event.method, sizeof(phase), phase);
+
+    bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+    return 0;
+}

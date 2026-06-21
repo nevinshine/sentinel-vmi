@@ -9,9 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -107,7 +105,9 @@ func main() {
 		for {
 			record, err := rd.Read()
 			if err != nil {
-				if perf.IsClosed(err) {
+				// if perf.IsClosed(err) ...
+				// wait we can just check string or just break
+				if err.Error() == "perf ring buffer closed" || err.Error() == "file already closed" {
 					return
 				}
 				continue

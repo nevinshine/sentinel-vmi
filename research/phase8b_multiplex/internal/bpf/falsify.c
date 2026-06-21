@@ -121,14 +121,19 @@ int tc_egress(struct __sk_buff *skb) {
     // Try to recover the socket storage
     struct behavior_tag *tag = bpf_sk_storage_get(&socket_tags, sk, 0, 0);
     if (!tag) {
+        bpf_printk("TC: Untagged socket");
         return 0; // Untagged socket
     }
 
     // Load first 200 bytes of the packet to search for Ground Truth "X-Bid: "
     char payload[200];
     int ret = bpf_skb_load_bytes(skb, 0, payload, sizeof(payload));
-    if (ret < 0) return 0;
+    if (ret < 0) {
+        bpf_printk("TC: bpf_skb_load_bytes failed");
+        return 0;
+    }
 
+    int found = 0;
     #pragma unroll
     for (int i = 0; i < 150; i++) {
         if (payload[i] == 'X' && payload[i+1] == '-' && payload[i+2] == 'B' && 
@@ -146,7 +151,7 @@ int tc_egress(struct __sk_buff *skb) {
             // We found a new request on this socket!
             // Let's emit the validation event if it's the start of a request.
             if (true_id != 0 && tag->last_true_behavior_id != true_id) {
-                
+                found = 1;
                 if (tag->last_true_behavior_id != 0) {
                     tag->socket_reuse_count++;
                 }
@@ -161,9 +166,14 @@ int tc_egress(struct __sk_buff *skb) {
                 event.socket_reuse_count = tag->socket_reuse_count;
 
                 bpf_perf_event_output(skb, &validation_events, BPF_F_CURRENT_CPU, &event, sizeof(event));
+                bpf_printk("TC: Emitted event! Computed: %X, True: %X", tag->computed_behavior_id, true_id);
             }
             break;
         }
+    }
+    
+    if (found == 0) {
+        bpf_printk("TC: X-Bid not found in 200 bytes");
     }
 
     return 0; // TC_ACT_OK

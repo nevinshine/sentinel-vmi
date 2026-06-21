@@ -29,7 +29,7 @@ FLOWCTL_PID=$!
 sleep 2
 
 touch decision_bus.jsonl
-sudo ./bin/hyperiond > /dev/null 2>&1 &
+sudo ./bin/hyperiond > /tmp/hyperiond.log 2>&1 &
 HYP_PID=$!
 sleep 1
 

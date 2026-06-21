@@ -134,39 +134,6 @@ int kprobe__tcp_connect(struct pt_regs *ctx) {
     return 0;
 }
 
-// HOOK 1c: sockops fallback
-SEC("sockops")
-int bpf_sockmap(struct bpf_sock_ops *skops) {
-    if (skops->family != AF_INET && skops->family != AF_INET6)
-        return 0;
-
-    // Only hook active connections (connect())
-    if (skops->op != BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB)
-        return 0;
-
-    void *sk = skops;
-    if (!skops->sk) return 0;
-
-    __u64 pid_tgid = bpf_get_current_pid_tgid();
-    struct behavior_context *bctx = bpf_map_lookup_elem(&behavior_map, &pid_tgid);
-    if (!bctx) return 0;
-
-    struct process_context *pctx = bpf_map_lookup_elem(&process_map, &pid_tgid);
-
-    struct behavior_tag *tag = bpf_sk_storage_get(&socket_tags, sk, 0, BPF_SK_STORAGE_GET_F_CREATE);
-    if (tag) {
-        tag->behavior_id = bctx->behavior_id;
-        tag->timestamp_ns = bpf_ktime_get_ns();
-        if (pctx) {
-            tag->subject_hash = pctx->subject_hash;
-        } else {
-            tag->subject_hash = 0;
-        }
-    }
-    
-    return 0;
-}
-
 // HOOK 2: cgroup_skb/egress (recover context from socket and output to flow_attribution)
 SEC("cgroup_skb/egress")
 int egress__packet_capture(struct __sk_buff *skb) {

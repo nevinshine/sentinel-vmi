@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	"phase8_attribution/internal/bpf"
 )
@@ -42,7 +43,7 @@ func main() {
 	cgroupPath := "/sys/fs/cgroup"
 	cgroupL, err := link.AttachCgroup(link.CgroupOptions{
 		Path:    cgroupPath,
-		Attach:  objs.EgressPacketCapture.Type(),
+		Attach:  ebpf.AttachCGroupInetEgress,
 		Program: objs.EgressPacketCapture,
 	})
 	if err != nil {

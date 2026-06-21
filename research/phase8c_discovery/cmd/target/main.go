@@ -76,6 +76,9 @@ func main() {
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 10,
 		},
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	expectedRequests := 10

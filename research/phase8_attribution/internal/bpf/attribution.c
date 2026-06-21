@@ -1,10 +1,14 @@
 //go:build ignore
 
+#define __TARGET_ARCH_x86
 #include <vmlinux.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_endian.h>
+
+#define AF_INET 2
+#define AF_INET6 10
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
@@ -140,8 +144,8 @@ int bpf_sockmap(struct bpf_sock_ops *skops) {
     if (skops->op != BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB)
         return 0;
 
-    struct sock *sk = skops->sk;
-    if (!sk) return 0;
+    void *sk = skops;
+    if (!skops->sk) return 0;
 
     __u64 pid_tgid = bpf_get_current_pid_tgid();
     struct behavior_context *bctx = bpf_map_lookup_elem(&behavior_map, &pid_tgid);

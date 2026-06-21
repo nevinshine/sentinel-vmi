@@ -23,7 +23,7 @@ func main() {
 	log.Println("[*] Starting Phase 8A Attribution Loader")
 
 	// Load pre-compiled programs and maps into the kernel.
-	objs := bpf.bpfObjects{}
+	objs := bpf.BpfObjects{}
 	if err := bpf.LoadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("Failed to load objects: %v", err)
 	}

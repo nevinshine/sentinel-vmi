@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"unsafe"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -42,7 +43,9 @@ func main() {
 			fmt.Printf("Field %d: %s (%v) at offset %d\n", i, field.Name, field.Type, field.Offset)
 			
 			if field.Name == "val" {
-				valInterface := val.Field(i).Interface()
+				// Bypass unexported field restriction
+				valPtr := unsafe.Pointer(val.Field(i).UnsafeAddr())
+				valInterface := *(*interface{})(valPtr)
 				spanVal := reflect.ValueOf(valInterface)
 				fmt.Printf("  val Underlying Type: %v (Kind: %v)\n", spanVal.Type(), spanVal.Kind())
 				if spanVal.Kind() == reflect.Ptr {
@@ -51,7 +54,7 @@ func main() {
 						spanField := spanVal.Type().Field(j)
 						fmt.Printf("    Span Field %d: %s (%v) at offset %d\n", j, spanField.Name, spanField.Type, spanField.Offset)
 						
-						if spanField.Name == "spanContext" {
+						if spanField.Type.String() == "trace.SpanContext" {
 							scVal := spanVal.Field(j)
 							for k := 0; k < scVal.NumField(); k++ {
 								scField := scVal.Type().Field(k)

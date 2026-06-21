@@ -31,7 +31,7 @@ func main() {
 	// Start garbage collector
 	go ttl.SweepExpiredEntries(controller)
 
-	busPath := "../decision_bus.jsonl"
+	busPath := "decision_bus.jsonl"
 	fmt.Printf("[*] Tailing Decision Bus: %s\n", busPath)
 
 	events := make(chan model.DecisionEvent)

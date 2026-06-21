@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"unsafe"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -19,7 +18,7 @@ func main() {
 
 	// 3. Extract the TraceID
 	span := trace.SpanFromContext(ctx)
-	fmt.Printf("TraceID: %s\n", span.SpanContext().Trace().String())
+	fmt.Printf("TraceID: %s\n", span.SpanContext().TraceID().String())
 
 	// 4. Explore the context memory layout!
 	// ctx is an interface{}. Underneath, it's a pointer to an internal OTel struct.

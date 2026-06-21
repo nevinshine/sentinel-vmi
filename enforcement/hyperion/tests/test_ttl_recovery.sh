@@ -11,8 +11,7 @@ sudo rm -f /sys/fs/bpf/hyperion_blocked_flows || true
 sudo rm -f ../decision_bus.jsonl
 
 # Build everything
-cd ..
-make build
+make build-release
 
 # Start hyperiond in the background
 touch decision_bus.jsonl

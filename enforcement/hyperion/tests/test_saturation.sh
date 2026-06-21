@@ -4,7 +4,6 @@
 set -e
 
 echo "[*] Compiling Instrumented Build for Saturation Benchmark..."
-cd ..
 make build-instrumented
 
 MAX_ENTRIES=16384 # As defined in bpf map

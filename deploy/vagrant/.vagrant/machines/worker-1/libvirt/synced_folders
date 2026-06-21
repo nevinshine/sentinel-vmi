@@ -1,1 +1,1 @@
-{}
+{"rsync":{"/vagrant":{"disabled":false,"guestpath":"/vagrant","hostpath":"/home/nevin/sentinel-stack/sentinel-vmi","type":"rsync","rsync__exclude":[".git/","tests/","bench/","docs/","capture/"],"__vagrantfile":true,"exclude":[".git/","tests/","bench/","docs/","capture/"],"owner":"vagrant","group":"vagrant"}}}

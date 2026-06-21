@@ -1,12 +1,18 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Stage 3C: Thermodynamic Deployment Substrate
-# Provisions a libvirt-based k3s cluster to test Sentinel's compression economics
-# under real orchestration pressure (chaos-mesh, Cilium eBPF, Istio sidecars).
+# Sentinel VMI — Reproducible Deployment Substrate
+#
+# Pure Cilium authority geometry. No flannel. No hybrid CNI.
+# All artifacts synced locally — zero internet dependency during provisioning.
+#
+# Nodes:
+#   control-plane  192.168.50.10  k3s server + Cilium install
+#   worker-1       192.168.50.11  k3s agent (joins via deterministic token)
 
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/ubuntu2204"
+
   config.vm.provider :libvirt do |libvirt|
     libvirt.uri = "qemu:///system"
     libvirt.qemu_use_session = false
@@ -16,52 +22,25 @@ Vagrant.configure("2") do |config|
     libvirt.nested = true
   end
 
-  # Control Plane (k3s server)
-  config.vm.define "control-plane" do |cp|
+  # Sync the sentinel-vmi root into /vagrant inside each VM.
+  # This gives provisioning scripts access to:
+  #   /vagrant/k3s          — pre-cached k3s binary (60MB)
+  #   /vagrant/install.sh   — k3s install script (local copy)
+  #   /vagrant/deploy/vagrant/provision/*.sh — provisioning scripts
+  config.vm.synced_folder "../../", "/vagrant", type: "rsync",
+    rsync__exclude: [".git/", "tests/", "bench/", "docs/", "capture/"]
+
+  # ── Control Plane ────────────────────────────────────────────────
+  config.vm.define "control-plane", primary: true do |cp|
     cp.vm.hostname = "control-plane"
     cp.vm.network "private_network", ip: "192.168.50.10"
-    cp.vm.provision "shell", inline: <<-SHELL
-      set -ex
-      curl -v -fL https://get.k3s.io -o install.sh
-      sh install.sh server --cluster-init --flannel-backend=none --disable-network-policy --token=sentinel_secret
-      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-      echo "Waiting for k3s server to be ready..."
-      until /usr/local/bin/kubectl get node 2>/dev/null | grep -E -q "NotReady|Ready"; do sleep 2; done
-      echo "Control Plane Initialized. Installing Cilium..."
-      curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
-      tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-      /usr/local/bin/cilium install
-    SHELL
+    cp.vm.provision "shell", path: "provision/control_plane.sh"
   end
 
-  # Worker 1 (Cilium Dataplane)
+  # ── Worker 1 ─────────────────────────────────────────────────────
   config.vm.define "worker-1" do |w1|
     w1.vm.hostname = "worker-1"
     w1.vm.network "private_network", ip: "192.168.50.11"
-    w1.vm.provision "shell", inline: <<-SHELL
-      set -ex
-      curl -v -fL https://get.k3s.io -o install.sh
-      K3S_URL=https://192.168.50.10:6443 K3S_TOKEN=sentinel_secret sh install.sh
-      echo "Worker 1 Joined cluster."
-    SHELL
-  end
-
-  # Worker 2 (Istio Sidecars)
-  config.vm.define "worker-2" do |w2|
-    w2.vm.hostname = "worker-2"
-    w2.vm.network "private_network", ip: "192.168.50.12"
-    w2.vm.provision "shell", inline: <<-SHELL
-      echo "Worker 2 Ready for k3s agent join."
-    SHELL
-  end
-
-  # Chaos Node (Turbulence Injector)
-  config.vm.define "chaos-node" do |cn|
-    cn.vm.hostname = "chaos-node"
-    cn.vm.network "private_network", ip: "192.168.50.13"
-    cn.vm.provision "shell", inline: <<-SHELL
-      apt-get update && apt-get install -y stress-ng net-tools iproute2
-      echo "Chaos Node Ready."
-    SHELL
+    w1.vm.provision "shell", path: "provision/worker.sh"
   end
 end

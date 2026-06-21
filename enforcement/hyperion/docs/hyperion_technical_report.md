@@ -1,7 +1,7 @@
 # Hyperion XDP Dataplane: Phase 7 Technical Report
 
 ## 1. Abstract
-The Hyperion dataplane represents the enforcement layer of the Sentinel Stack. Transitioning from a theoretical prototype to a fully packaged, CO-RE compliant BPF structure, Hyperion now enforces high-speed, state-bound network filtering directly in the kernel via eXpress Data Path (XDP). This report empirically validates the architectural boundaries of the system, proving state-reconciliation correctness and plotting the physical saturation limits of the deployed BPF maps.
+The Hyperion dataplane represents the enforcement layer of the Sentinel Stack. Transitioning from a theoretical prototype to a packaged, CO-RE compliant BPF structure, Hyperion now enforces high-speed, state-bound network filtering directly in the kernel via eXpress Data Path (XDP). This report empirically validates the architectural boundaries of the system, verifying state-reconciliation correctness and plotting the physical saturation limits of the deployed BPF maps.
 
 ## 2. Ephemeral Enforcement & State Reconciliation
 
@@ -23,7 +23,7 @@ This completely resolves the kernel-state fragmentation issue.
 
 ## 3. Thermodynamics: Scale and Saturation Boundaries
 
-A dataplane without known physical limits is unsafe for production deployment. Using the `test_saturation.sh` suite on a physical Ubuntu 24.04 (Kernel 6.8.0-117) CloudLab substrate, we injected 20,000 serialized flow decisions into the event bus to track the structural behavior of the system as it approaches the `16,384` capacity limit of the BPF Hash Map.
+A dataplane without known physical limits cannot be accurately evaluated. Using the `test_saturation.sh` suite on a physical Ubuntu 24.04 (Kernel 6.8.0-117) CloudLab substrate, we injected 20,000 serialized flow decisions into the event bus to track the structural behavior of the system as it approaches the `16,384` capacity limit of the BPF Hash Map.
 
 ### 3.1 Saturation Metrics
 
@@ -41,17 +41,17 @@ The following empirical curve maps the successful injection of flows into the ke
 
 ![Occupancy Curve](occupancy_curve.png)
 
-### 3.3 Memory Footprint
+## 3.3 Estimated Memory Footprint
 
-The memory footprint of the Hyperion dataplane is entirely defined by the struct size injected into the BPF Map. 
+The theoretical memory footprint of the Hyperion dataplane is defined by the struct size injected into the BPF Map. 
 
 - `FlowKey`: 8 Bytes (`dst_ip`, `dst_port`, `reserved`)
 - `BlockEntry`: 16 Bytes (`expires_ns`, `risk_score`, `reserved`)
 - **Total per element:** 24 Bytes
 
-At maximum capacity, the map requires just under **400 KB** of contiguous kernel memory, establishing Hyperion as a highly optimized, low-overhead interdiction engine.
+At maximum capacity, the map requires an estimated **400 KB** of contiguous kernel memory, establishing Hyperion as a low-overhead interdiction engine prototype.
 
 ![Memory Curve](memory_curve.png)
 
 ## 4. Conclusion
-The Phase 7 deployment is technically complete. The Hyperion enforcement subsystem handles crash-recovery gracefully and scales deterministically to its strict memory limits. The architecture is now officially frozen, providing a stable foundation for the upcoming research transition into Phase 8: Subject ↔ Flow Attribution.
+The Phase 7 deployment has established Hyperion as an empirically validated prototype. The enforcement subsystem handles crash-recovery gracefully and scales deterministically to its strict memory limits. The architecture is now officially frozen, providing a stable foundation for the upcoming research transition into Phase 8: Subject ↔ Flow Attribution.

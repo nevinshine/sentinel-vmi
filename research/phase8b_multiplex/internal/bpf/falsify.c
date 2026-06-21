@@ -40,6 +40,9 @@ struct validation_event {
     __u32 socket_reuse_count;
 };
 
+// Force clang to keep this type in BTF info
+struct validation_event __force_btf_validation_event;
+
 // MAPS
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);

@@ -3,19 +3,41 @@ package main
 import (
 	"log"
 	"net"
-	"os"
 	"os/signal"
 	"encoding/binary"
 	"syscall"
 	"time"
+	"fmt"
 
+	"os/exec"
+	"flag"
+	"sync"
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/rlimit"
 	"phase8_attribution/internal/bpf"
 )
 
+var worker = flag.Bool("worker", false, "Run as worker")
+var numClients = flag.Int("clients", 1, "Number of concurrent clients to run")
+
 func main() {
+	flag.Parse()
+
+	if *worker {
+		// Print PID and wait for signal
+		fmt.Printf("%d\n", os.Getpid())
+		buf := make([]byte, 1)
+		os.Stdin.Read(buf)
+		
+		conn, _ := net.Dial("tcp", "1.1.1.1:80")
+		if conn != nil {
+			conn.Write([]byte("GET / HTTP/1.1\r\n\r\n"))
+			conn.Close()
+		}
+		return
+	}
+
 	// Allow the current process to lock memory for eBPF resources.
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatalf("Failed to remove memlock: %v", err)
@@ -70,65 +92,75 @@ func main() {
 	defer tcxL.Close()
 	log.Println("[+] Attached tc/egress to", defaultIface.Name)
 
-	// Set up Experiment 1 Fake Behavior
-	pid := uint64(os.Getpid())
-	behaviorID := uint64(0x41) // "A"
-
-	// 1. Populate process_map
-	pctx := bpf.BpfProcessContext{
-		SubjectHash: 0xDEADBEEF,
-		LineageHash: 0xCAFEBABE,
+	// End-to-End Metrics
+	clients := *numClients
+	if clients == 0 {
+		clients = 1
 	}
-	if err := objs.ProcessMap.Put(&pid, &pctx); err != nil {
-		log.Fatalf("Failed to put process_map: %v", err)
+	
+	log.Printf("[*] Launching %d concurrent clients...", clients)
+
+	var wg sync.WaitGroup
+	for i := 0; i < clients; i++ {
+		wg.Add(1)
+		go func(clientID int) {
+			defer wg.Done()
+			cmd := exec.Command(os.Args[0], "-worker")
+			stdin, _ := cmd.StdinPipe()
+			stdout, _ := cmd.StdoutPipe()
+			
+			cmd.Start()
+			
+			// Read PID from worker
+			var workerPid uint64
+			fmt.Fscanf(stdout, "%d\n", &workerPid)
+			
+			behaviorID := uint64(0x40 + clientID)
+			
+			// Populate maps
+			pctx := bpf.BpfProcessContext{SubjectHash: 0xDEADBEEF, LineageHash: 0xCAFEBABE}
+			objs.ProcessMap.Put(&workerPid, &pctx)
+			
+			bctx := bpf.BpfBehaviorContext{BehaviorId: behaviorID, PidTgid: workerPid}
+			objs.BehaviorMap.Put(&workerPid, &bctx)
+			
+			// Signal worker to connect
+			stdin.Write([]byte("\n"))
+			cmd.Wait()
+		}(i)
 	}
 
-	// 2. Populate behavior_map
-	bctx := bpf.BpfBehaviorContext{
-		BehaviorId: behaviorID,
-		PidTgid:    pid,
-	}
-	if err := objs.BehaviorMap.Put(&pid, &bctx); err != nil {
-		log.Fatalf("Failed to put behavior_map: %v", err)
-	}
+	// Wait for all workers to complete
+	wg.Wait()
+	log.Println("[*] All clients completed. Waiting for BPF map sync...")
+	time.Sleep(2 * time.Second)
 
-	log.Printf("[*] Experiment 1 Environment Ready")
-	log.Printf("    PID: %d", pid)
-	log.Printf("    BehaviorID: 0x%X", behaviorID)
-	log.Println("[*] Waiting for test traffic... Press Ctrl+C to exit")
-
-	// In the background, let's trigger a connect() ourselves or wait for curl!
-	go func() {
-		time.Sleep(2 * time.Second)
-		log.Println("[*] Self-test: connecting to 1.1.1.1:80")
-		conn, err := net.Dial("tcp", "1.1.1.1:80")
-		if err != nil {
-			log.Printf("[!] Dial failed: %v", err)
-		} else {
-			log.Printf("[+] Dial success: Local=%s Remote=%s", conn.LocalAddr(), conn.RemoteAddr())
-			conn.Write([]byte("GET / HTTP/1.1\r\n\r\n"))
-			conn.Close()
+	// Collect statistics
+	recoveredCount := 0
+	var key bpf.BpfFlowKey
+	var val bpf.BpfFlowAttribution
+	entries := objs.FlowMap.Iterate()
+	for entries.Next(&key, &val) {
+		recoveredCount++
+		// Just to debug
+		if clients <= 10 {
+			srcIp := intToIP(key.SrcIp)
+			dstIp := intToIP(key.DstIp)
+			log.Printf("    Flow: %s:%d -> %s:%d/TCP", srcIp, key.SrcPort, dstIp, key.DstPort)
+			log.Printf("    Recovered BehaviorID: 0x%X (Packets: %d)", val.BehaviorId, val.PacketCount)
 		}
-	}()
-
-	// Watch the flow_map for entries
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for range ticker.C {
-			var key bpf.BpfFlowKey
-			var val bpf.BpfFlowAttribution
-			entries := objs.FlowMap.Iterate()
-			for entries.Next(&key, &val) {
-				srcIp := intToIP(key.SrcIp)
-				dstIp := intToIP(key.DstIp)
-				log.Printf("    Flow: %s:%d -> %s:%d/TCP", srcIp, key.SrcPort, dstIp, key.DstPort)
-				log.Printf("    Recovered BehaviorID: 0x%X (Packets: %d)", val.BehaviorId, val.PacketCount)
-				
-				// Delete to only print once
-				objs.FlowMap.Delete(&key)
-			}
-		}
-	}()
+	}
+	
+	successRate := float64(recoveredCount) / float64(clients) * 100.0
+	log.Printf("=== Phase 8A End-to-End Metrics ===")
+	log.Printf("Clients Spawned  : %d", clients)
+	log.Printf("Flows Recovered  : %d", recoveredCount)
+	log.Printf("Success Rate     : %.2f%%", successRate)
+	if recoveredCount < clients {
+		log.Printf("Missing Rate     : %.2f%%", 100.0 - successRate)
+	} else {
+		log.Printf("Missing Rate     : 0.00%%")
+	}
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)

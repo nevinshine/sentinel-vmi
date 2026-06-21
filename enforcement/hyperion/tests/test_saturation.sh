@@ -61,7 +61,7 @@ for COUNT in 100 1000 10000 16000 20000; do
     DUR_MS=$(((END - START) / 1000000))
     
     # Check actual map occupancy
-    ENTRIES_USED=$(sudo bpftool map dump pinned /sys/fs/bpf/hyperion_blocked_flows | grep "key:" | wc -l || echo 0)
+    ENTRIES_USED=$(sudo bpftool map dump pinned /sys/fs/bpf/hyperion_blocked_flows | grep "\"key\":" | wc -l || echo 0)
     
     LOAD_FACTOR=$(echo "scale=2; ($ENTRIES_USED / $MAX_ENTRIES) * 100" | bc)
     

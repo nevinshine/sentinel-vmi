@@ -153,12 +153,12 @@ int egress__packet_capture(struct __sk_buff *skb) {
         return 1; // No behavior tag
     }
 
-    // Recovered! Now extract the 5-tuple
+    // Extract 5-tuple from skb directly
     struct flow_key key = {};
-    key.src_ip = sk->src_ip4;
-    key.dst_ip = sk->dst_ip4;
-    key.src_port = sk->src_port;
-    key.dst_port = bpf_ntohs(sk->dst_port); // bpf_sock dst_port is in network byte order usually
+    key.src_ip = skb->local_ip4;
+    key.dst_ip = skb->remote_ip4;
+    key.src_port = skb->local_port;
+    key.dst_port = bpf_ntohs(skb->remote_port); // bpf_sock dst_port is in network byte order usually
     key.protocol = IPPROTO_TCP;
 
     // Update flow_attribution

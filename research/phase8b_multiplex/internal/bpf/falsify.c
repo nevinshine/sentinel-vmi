@@ -125,17 +125,32 @@ int tc_egress(struct __sk_buff *skb) {
         return 0; // Untagged socket
     }
 
-    // Load first 200 bytes of the packet to search for Ground Truth "X-Bid: "
-    char payload[200];
-    int ret = bpf_skb_load_bytes(skb, 0, payload, sizeof(payload));
+    // Load payload up to 200 bytes
+    char payload[200] = {0};
+    int copy_len = skb->len;
+    if (copy_len > sizeof(payload)) {
+        copy_len = sizeof(payload);
+    }
+    
+    // We only care about packets that could contain our 8 byte header
+    if (copy_len < 64) {
+        return 0;
+    }
+
+    int ret = bpf_skb_load_bytes(skb, 0, payload, copy_len);
     if (ret < 0) {
-        bpf_printk("TC: bpf_skb_load_bytes failed");
+        // bpf_printk("TC: bpf_skb_load_bytes failed");
         return 0;
     }
 
     int found = 0;
+    int search_max = copy_len - 15;
+    if (search_max > 150) search_max = 150;
+    if (search_max < 0) search_max = 0;
+
     #pragma unroll
     for (int i = 0; i < 150; i++) {
+        if (i >= search_max) break;
         if (payload[i] == 'X' && payload[i+1] == '-' && payload[i+2] == 'B' && 
             payload[i+3] == 'i' && payload[i+4] == 'd' && payload[i+5] == ':' && payload[i+6] == ' ') {
             

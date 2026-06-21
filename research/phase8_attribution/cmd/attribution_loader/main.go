@@ -46,7 +46,6 @@ func main() {
 
 	// Attach cgroup_skb/egress hook
 	// For Experiment 1, we will attach to the root cgroup v2.
-	cgroupPath := "/sys/fs/cgroup"
 	cgroupL, err := link.AttachCgroup(link.CgroupOptions{
 		Path:    cgroupPath,
 		Attach:  ebpf.AttachCGroupInetEgress,
